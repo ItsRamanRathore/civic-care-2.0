@@ -95,6 +95,9 @@ if (io) {
   app.set('io', io);
 }
 
+// Disable buffering so we don't hang Vercel when DB is unreachable
+mongoose.set('bufferCommands', false);
+
 // Database connection
 const connectDB = async () => {
   if (mongoose.connection.readyState >= 1) return;
@@ -113,8 +116,18 @@ const connectDB = async () => {
 
 // Vercel strict await boundary middleware
 app.use(async (req, res, next) => {
-  await connectDB();
-  next();
+  try {
+    await connectDB();
+    if (mongoose.connection.readyState === 0) {
+      return res.status(503).json({ 
+        error: 'Database connection failed', 
+        details: 'Server selection timeout or IP blocked' 
+      });
+    }
+    next();
+  } catch (err) {
+    res.status(500).json({ error: 'Critical Database Error', details: err.message });
+  }
 });
 
 // Routes
