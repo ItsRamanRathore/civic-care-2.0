@@ -129,12 +129,22 @@ const connectDB = async () => {
   if (mongoose.connection.readyState >= 1) return;
   
   try {
-    await mongoose.connect(process.env.MONGODB_URI);
+    // Vercel Serverless optimization: ensure connection pool is managed
+    await mongoose.connect(process.env.MONGODB_URI, {
+      maxPoolSize: 10,
+      serverSelectionTimeoutMS: 5000,
+    });
     console.log('✅ Connected to MongoDB Atlas');
   } catch (err) {
     console.error('❌ MongoDB connection error:', err);
   }
 };
+
+// Vercel strict await boundary middleware
+app.use(async (req, res, next) => {
+  await connectDB();
+  next();
+});
 
 // Routes
 app.use('/api/auth', require('./routes/authRoutes'));
