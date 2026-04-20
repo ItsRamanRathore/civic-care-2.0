@@ -1,43 +1,83 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
-import Image from '../../../components/AppImage';
+import { civicIssueService } from '../../../services/civicIssueService';
 
-const IssueDetailsPanel = ({ issue, onClose, onReportSimilar }) => {
+const IssueDetailsPanel = ({ issue, onClose, onReportSimilar, onAddToRoute, isInRoute }) => {
+  const [upvotes, setUpvotes] = useState(issue?.votes?.upvotes || 0);
+  const [hasVoted, setHasVoted] = useState(false);
+  const [comments, setComments] = useState([]);
+  const [newComment, setNewComment] = useState('');
+  const [isLoadingComments, setIsLoadingComments] = useState(false);
+  const [isPostingComment, setIsPostingComment] = useState(false);
+  const [showComments, setShowComments] = useState(false);
+
+  useEffect(() => {
+    if (issue?.id) {
+      setUpvotes(issue.votes?.upvotes || 0);
+      fetchComments();
+    }
+  }, [issue?.id]);
+
+  const fetchComments = async () => {
+    setIsLoadingComments(true);
+    const { data } = await civicIssueService.getComments(issue.id);
+    if (data) setComments(data);
+    setIsLoadingComments(false);
+  };
+
+  const handleVote = async () => {
+    const { data } = await civicIssueService.voteOnIssue(issue.id);
+    if (data) {
+      setHasVoted(data.action === 'added');
+      setUpvotes(prev => data.action === 'added' ? prev + 1 : prev - 1);
+    }
+  };
+
+  const handlePostComment = async () => {
+    if (!newComment.trim()) return;
+    setIsPostingComment(true);
+    const { data, status } = await civicIssueService.addComment(issue.id, newComment);
+    if (data) {
+      if (status === 'pending') {
+        alert('Your comment is under AI review and will appear shortly.');
+      } else {
+        setComments([data, ...comments]);
+      }
+      setNewComment('');
+    }
+    setIsPostingComment(false);
+  };
+
   if (!issue) return null;
 
   const getStatusColor = (status) => {
     switch (status) {
       case 'pending':
-        return 'bg-accent text-accent-foreground';
+      case 'submitted':
+        return 'bg-blue-100 text-blue-700';
+      case 'in_progress':
       case 'in-progress':
-        return 'bg-warning text-warning-foreground';
+        return 'bg-orange-100 text-orange-700';
       case 'resolved':
-        return 'bg-success text-success-foreground';
+        return 'bg-green-100 text-green-700';
       case 'closed':
-        return 'bg-muted text-muted-foreground';
+        return 'bg-gray-100 text-gray-700';
       default:
-        return 'bg-muted text-muted-foreground';
+        return 'bg-gray-100 text-gray-700';
     }
   };
 
   const getCategoryIcon = (category) => {
     switch (category) {
-      case 'roads':
-        return 'Construction';
-      case 'sanitation':
-        return 'Trash2';
-      case 'utilities':
-        return 'Zap';
-      case 'safety':
-        return 'Shield';
-      case 'environment':
-        return 'Leaf';
-      case 'transport':
-        return 'Bus';
-      default:
-        return 'AlertCircle';
+      case 'roads': return 'Construction';
+      case 'sanitation': return 'Trash2';
+      case 'utilities': return 'Zap';
+      case 'safety': return 'Shield';
+      case 'environment': return 'Leaf';
+      case 'transport': return 'Bus';
+      default: return 'AlertCircle';
     }
   };
 
@@ -52,248 +92,209 @@ const IssueDetailsPanel = ({ issue, onClose, onReportSimilar }) => {
   };
 
   return (
-    <div className="absolute top-0 right-0 w-96 h-full bg-card border-l border-border shadow-modal z-20 overflow-hidden">
+    <div className="absolute top-0 right-0 w-[420px] h-full bg-white border-l border-gray-100 shadow-2xl z-20 overflow-hidden flex flex-col translate-x-0 transition-transform duration-300">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-border bg-muted/50">
-        <h3 className="font-medium text-card-foreground">Issue Details</h3>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onClose}
-          className="h-8 w-8"
-        >
-          <Icon name="X" size={16} />
+      <div className="flex items-center justify-between p-5 border-b border-gray-50 bg-gray-50/30">
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></div>
+          <h3 className="font-bold text-gray-900">Issue Details</h3>
+        </div>
+        <Button variant="ghost" size="icon" onClick={onClose} className="h-9 w-9 hover:bg-white shadow-sm ring-1 ring-gray-100">
+          <Icon name="X" size={18} />
         </Button>
       </div>
-      {/* Content */}
-      <div className="h-full overflow-y-auto pb-20">
+
+      {/* Content Area */}
+      <div className="flex-1 overflow-y-auto custom-scrollbar">
         {/* Issue Image */}
-        {issue?.images && issue?.images?.length > 0 && (
-          <div className="relative h-48 bg-muted">
-            <Image
-              src={issue?.images?.[0]}
-              alt={issue?.title}
-              className="w-full h-full object-cover"
-            />
+        {issue?.images?.length > 0 && (
+          <div className="relative h-56 group overflow-hidden">
+            <img src={issue?.images[0]} alt={issue?.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
             {issue?.images?.length > 1 && (
-              <div className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
-                +{issue?.images?.length - 1} more
+              <div className="absolute bottom-4 right-4 bg-white/20 backdrop-blur-md text-white text-xs font-bold px-3 py-1.5 rounded-full border border-white/30">
+                +{issue.images.length - 1} PHOTOS
               </div>
             )}
+            <div className="absolute bottom-4 left-4">
+              <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${getStatusColor(issue.status)} shadow-lg`}>
+                {issue.status?.replace('_', ' ')}
+              </span>
+            </div>
           </div>
         )}
 
-        <div className="p-4 space-y-4">
-          {/* Title and Status */}
-          <div>
-            <div className="flex items-start justify-between mb-2">
-              <h4 className="font-medium text-card-foreground text-lg leading-tight">
-                {issue?.title}
-              </h4>
-              <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(issue?.status)}`}>
-                {issue?.status?.replace('-', ' ')?.toUpperCase()}
+        <div className="p-6 space-y-8">
+          {/* Title & Stats */}
+          <div className="space-y-3">
+            <h4 className="text-2xl font-black text-gray-900 leading-tight tracking-tight">
+              {issue.title}
+            </h4>
+            <div className="flex items-center gap-4 text-xs font-medium text-gray-500">
+              <span className="flex items-center gap-1.5">
+                <Icon name="Hash" size={12} className="text-blue-600" />
+                ID: {issue.id?.substring(0, 8)}
+              </span>
+              <span className="flex items-center gap-1.5">
+                <Icon name="Calendar" size={12} />
+                {formatDate(issue.reportedAt || issue.createdAt)}
               </span>
             </div>
-            <p className="text-sm text-muted-foreground">
-              Issue #{issue?.id}
-            </p>
           </div>
 
-          {/* Category and Priority */}
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2">
-              <Icon name={getCategoryIcon(issue?.category)} size={16} className="text-primary" />
-              <span className="text-sm text-card-foreground capitalize">
-                {issue?.category?.replace('-', ' ')}
-              </span>
-            </div>
-            {issue?.priority && (
-              <div className="flex items-center space-x-1">
-                <Icon 
-                  name="AlertTriangle" 
-                  size={14} 
-                  className={issue?.priority === 'high' ? 'text-accent' : 'text-warning'} 
-                />
-                <span className="text-sm text-muted-foreground capitalize">
-                  {issue?.priority} Priority
-                </span>
+          {/* Social Actions (Upvote/Share) */}
+          <div className="flex items-center gap-3">
+            <Button 
+              variant={hasVoted ? "default" : "outline"} 
+              size="sm" 
+              onClick={handleVote}
+              className={`flex-1 flex items-center justify-center gap-2 font-bold py-6 rounded-2xl transition-all ${hasVoted ? 'bg-orange-600 border-none scale-[1.02] shadow-orange-200' : 'hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200'}`}
+            >
+              <Icon name="Flame" size={18} className={hasVoted ? 'animate-bounce' : ''} />
+              {upvotes} UPVOTES
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setShowComments(!showComments)}
+              className={`flex-1 flex items-center justify-center gap-2 font-bold py-6 rounded-2xl transition-all ${showComments ? 'bg-blue-600 text-white border-none' : ''}`}
+            >
+              <Icon name="MessageCircle" size={18} />
+              {comments.length} COMMENTS
+            </Button>
+          </div>
+
+          {/* Details Grid */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="p-4 rounded-3xl bg-gray-50/80 border border-gray-100">
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Category</p>
+              <div className="flex items-center gap-2 text-gray-900 font-bold">
+                <div className="p-1.5 rounded-lg bg-white shadow-sm ring-1 ring-gray-100">
+                  <Icon name={getCategoryIcon(issue.category)} size={14} className="text-blue-600" />
+                </div>
+                {issue.category?.toUpperCase()}
               </div>
-            )}
+            </div>
+            <div className="p-4 rounded-3xl bg-gray-50/80 border border-gray-100">
+              <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-2">Priority</p>
+              <div className="flex items-center gap-2 text-gray-900 font-bold">
+                <div className="p-1.5 rounded-lg bg-white shadow-sm ring-1 ring-gray-100">
+                  <Icon name="ShieldAlert" size={14} className={issue.priority === 'critical' ? 'text-red-600' : 'text-orange-500'} />
+                </div>
+                {issue.priority?.toUpperCase()}
+              </div>
+            </div>
           </div>
 
           {/* Description */}
-          <div>
-            <h5 className="font-medium text-card-foreground mb-2">Description</h5>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              {issue?.description}
+          <div className="space-y-3">
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Incident Description</p>
+            <p className="text-gray-600 leading-relaxed font-medium">
+              {issue.description}
             </p>
           </div>
 
-          {/* Location */}
-          <div>
-            <h5 className="font-medium text-card-foreground mb-2">Location</h5>
-            <div className="flex items-start space-x-2">
-              <Icon name="MapPin" size={16} className="text-primary mt-0.5" />
-              <div className="flex-1">
-                <p className="text-sm text-card-foreground">{issue?.address}</p>
-                {issue?.coordinates && (
-                  <div className="mt-2 p-2 bg-muted rounded-md">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs font-medium text-card-foreground mb-1">📍 GPS Coordinates</p>
-                        <p className="text-xs text-muted-foreground font-mono">
-                          {issue?.coordinates?.lat?.toFixed(6)}, {issue?.coordinates?.lng?.toFixed(6)}
-                        </p>
-                      </div>
-                      <div className="flex items-center space-x-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            navigator.clipboard?.writeText(`${issue?.coordinates?.lat?.toFixed(6)}, ${issue?.coordinates?.lng?.toFixed(6)}`);
-                            // You could add a toast notification here
-                          }}
-                          className="h-6 w-6 p-0"
-                          title="Copy coordinates"
-                        >
-                          <Icon name="Copy" size={12} />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            window.open(`https://www.google.com/maps?q=${issue?.coordinates?.lat},${issue?.coordinates?.lng}`, '_blank');
-                          }}
-                          className="h-6 w-6 p-0"
-                          title="Open in Google Maps"
-                        >
-                          <Icon name="ExternalLink" size={12} />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Reporter Information */}
-          <div>
-            <h5 className="font-medium text-card-foreground mb-2">Reported By</h5>
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
-                <Icon name="User" size={14} color="white" />
+          {/* Location Details */}
+          <div className="space-y-4">
+            <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Localized at</p>
+            <div className="flex items-start gap-3 p-5 rounded-3xl bg-blue-50/30 border border-blue-100/50">
+              <div className="w-10 h-10 rounded-2xl bg-white shadow-sm ring-1 ring-blue-100 flex items-center justify-center shrink-0">
+                <Icon name="MapPin" size={20} className="text-blue-600" />
               </div>
               <div>
-                <p className="text-sm font-medium text-card-foreground">{issue?.reporter?.name}</p>
-                <p className="text-xs text-muted-foreground">
-                  {formatDate(issue?.reportedAt)}
+                <p className="text-sm font-bold text-gray-900 leading-snug">{issue.address}</p>
+                <p className="text-xs text-blue-600/70 font-mono mt-1 font-bold">
+                  {issue.coordinates?.lat?.toFixed(6)}, {issue.coordinates?.lng?.toFixed(6)}
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Assignment Information */}
-          {issue?.assignedTo && (
-            <div>
-              <h5 className="font-medium text-card-foreground mb-2">Assigned To</h5>
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-secondary rounded-full flex items-center justify-center">
-                  <Icon name="UserCheck" size={14} color="white" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-card-foreground">{issue?.assignedTo?.name}</p>
-                  <p className="text-xs text-muted-foreground">{issue?.assignedTo?.department}</p>
-                </div>
+          {/* Comments Section (Expandable) */}
+          {showComments && (
+            <div className="space-y-6 pt-4 border-t border-gray-100 animate-in fade-in slide-in-from-bottom-5 duration-300">
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Community Discussion</p>
+                <Button variant="ghost" size="sm" onClick={fetchComments} className="text-[10px] h-6 px-2">REFRESH</Button>
               </div>
-            </div>
-          )}
+              
+              {/* Comment Input */}
+              <div className="relative group">
+                <textarea 
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  placeholder="Share your perspective..."
+                  className="w-full bg-gray-50 border-none rounded-3xl p-5 pr-14 text-sm font-medium focus:ring-2 focus:ring-blue-600 transition-all resize-none min-h-[100px]"
+                />
+                <button 
+                  onClick={handlePostComment}
+                  disabled={isPostingComment || !newComment.trim()}
+                  className="absolute bottom-4 right-4 w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-lg shadow-blue-200 disabled:opacity-50 hover:scale-105 active:scale-95 transition-all"
+                >
+                  {isPostingComment ? <Icon name="Loader2" size={16} className="animate-spin" /> : <Icon name="Send" size={16} />}
+                </button>
+              </div>
 
-          {/* Timeline */}
-          {issue?.timeline && issue?.timeline?.length > 0 && (
-            <div>
-              <h5 className="font-medium text-card-foreground mb-2">Timeline</h5>
-              <div className="space-y-2">
-                {issue?.timeline?.slice(0, 3)?.map((event, index) => (
-                  <div key={index} className="flex items-start space-x-2">
-                    <div className="w-2 h-2 bg-primary rounded-full mt-2" />
-                    <div className="flex-1">
-                      <p className="text-sm text-card-foreground">{event?.action}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {formatDate(event?.timestamp)}
-                      </p>
-                    </div>
+              {/* Comment List */}
+              <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                {isLoadingComments ? (
+                  <div className="flex flex-col items-center justify-center py-10 text-gray-400 gap-3">
+                    <Icon name="Loader2" size={24} className="animate-spin" />
+                    <p className="text-xs font-bold uppercase tracking-widest">Syncing discussion...</p>
                   </div>
-                ))}
-                {issue?.timeline?.length > 3 && (
-                  <p className="text-xs text-muted-foreground pl-4">
-                    +{issue?.timeline?.length - 3} more updates
-                  </p>
+                ) : comments.length === 0 ? (
+                  <div className="text-center py-10 text-gray-400">
+                    <Icon name="MessagesSquare" size={24} className="mx-auto mb-2 opacity-20" />
+                    <p className="text-xs font-bold uppercase tracking-widest">No comments yet</p>
+                    <p className="text-[10px] mt-1 font-medium">Be the first to share your thoughts!</p>
+                  </div>
+                ) : (
+                  comments.map(comment => (
+                    <div key={comment._id} className="p-4 rounded-2xl bg-gray-50/50 border border-gray-100 flex gap-3">
+                      <div className="w-8 h-8 rounded-full bg-white shadow-sm ring-1 ring-gray-100 flex items-center justify-center shrink-0">
+                        <Icon name="User" size={14} className="text-blue-600" />
+                      </div>
+                      <div className="space-y-1 flex-1">
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-black text-gray-900">{comment.user_id?.full_name}</p>
+                          <p className="text-[10px] text-gray-400 font-bold">{formatDate(comment.createdAt).split(',')[0]}</p>
+                        </div>
+                        <p className="text-xs text-gray-600 leading-relaxed font-medium">{comment.text}</p>
+                        {comment.user_id?.badges?.length > 0 && (
+                          <div className="flex gap-1 mt-2">
+                            {comment.user_id.badges.map(b => (
+                              <span key={b} className="px-1.5 py-0.5 rounded bg-amber-100 text-[8px] font-black text-amber-700 uppercase">{b}</span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))
                 )}
-              </div>
-            </div>
-          )}
-
-          {/* Votes/Reactions */}
-          {issue?.votes && (
-            <div>
-              <h5 className="font-medium text-card-foreground mb-2">Community Response</h5>
-              <div className="flex items-center space-x-4">
-                <div className="flex items-center space-x-1">
-                  <Icon name="ThumbsUp" size={14} className="text-success" />
-                  <span className="text-sm text-muted-foreground">{issue?.votes?.upvotes}</span>
-                </div>
-                <div className="flex items-center space-x-1">
-                  <Icon name="MessageCircle" size={14} className="text-primary" />
-                  <span className="text-sm text-muted-foreground">{issue?.votes?.comments || 0}</span>
-                </div>
               </div>
             </div>
           )}
         </div>
       </div>
-      {/* Action Buttons */}
-      <div className="absolute bottom-0 left-0 right-0 p-4 bg-card border-t border-border space-y-2">
+
+      {/* Persistent Action Footer */}
+      <div className="p-6 bg-white border-t border-gray-100 space-y-3">
         <Button
-          variant="default"
+          variant={isInRoute ? "outline" : "default"}
           fullWidth
-          iconName="Plus"
-          iconPosition="left"
-          iconSize={16}
-          onClick={() => onReportSimilar(issue)}
+          className={`h-14 rounded-2xl font-black tracking-widest text-[10px] transition-all transform active:scale-95 ${isInRoute ? 'bg-green-50 text-green-700 border-green-200' : 'bg-blue-600 hover:bg-blue-700 shadow-xl shadow-blue-100'}`}
+          onClick={() => onAddToRoute(issue)}
+          disabled={isInRoute}
+          iconName={isInRoute ? "Check" : "Navigation"}
+          iconSize={18}
         >
-          Report Similar Issue
+          {isInRoute ? "IN INSPECTION ROUTE" : "ADD TO ROUTE"}
         </Button>
-        <div className="flex space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex-1"
-            iconName="ExternalLink"
-            iconPosition="left"
-            iconSize={14}
-          >
-            <Link to={`/issue/${issue?.id}`} className="w-full">
-              View Full Details
-            </Link>
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex-1"
-            iconName="Share2"
-            iconPosition="left"
-            iconSize={14}
-            onClick={() => {
-              navigator.share?.({
-                title: issue?.title,
-                text: issue?.description,
-                url: window.location?.href
-              });
-            }}
-          >
-            Share
-          </Button>
+        <div className="flex gap-3">
+          <Button variant="outline" className="flex-1 h-12 rounded-xl text-[10px] font-black tracking-widest" onClick={() => onReportSimilar(issue)}>DUPLICATE</Button>
+          <Button variant="outline" className="flex-1 h-12 rounded-xl text-[10px] font-black tracking-widest" onClick={() => {
+            navigator.share?.({ title: issue.title, text: issue.description, url: window.location.href });
+          }}>SHARE</Button>
         </div>
       </div>
     </div>

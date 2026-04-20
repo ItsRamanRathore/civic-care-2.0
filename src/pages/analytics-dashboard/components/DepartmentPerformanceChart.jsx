@@ -3,24 +3,30 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 
 const DepartmentPerformanceChart = ({ data, loading = false }) => {
   // Process real data or use fallback
-  const chartData = data && data.length > 0 ?
-    data.map(item => ({
+  const processedData = (data || [])
+    ?.filter(item => item && (Number(item.total) > 0 || Number(item.resolved) > 0))
+    ?.map(item => ({
       department: item.name || 'Unknown',
-      assigned: item.total || 0,
-      completed: item.resolved || 0,
-      pending: (item.total || 0) - (item.resolved || 0),
-      efficiency: item.efficiency || 0,
-      avgResolutionTime: item.avgResolutionTime || 0
-    })) : [
-      {
-        department: 'No Data',
-        assigned: 0,
-        completed: 0,
-        pending: 0,
-        efficiency: 0,
-        avgResolutionTime: 0
-      }
-    ];
+      assigned: Number(item.total) || 0,
+      completed: Number(item.resolved) || 0,
+      pending: Math.max(0, (Number(item.total) || 0) - (Number(item.resolved) || 0)),
+      efficiency: Number(item.efficiency) || 0,
+      avgResolutionTime: Number(item.avgResolutionTime) || 0
+    })) || [];
+
+  if (processedData.length === 0) {
+    return (
+      <div className="h-80 flex flex-col items-center justify-center text-center p-6">
+        <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+          <svg className="w-8 h-8 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          </svg>
+        </div>
+        <h3 className="text-lg font-medium text-foreground mb-1">No Performance Data</h3>
+        <p className="text-sm text-muted-foreground max-w-xs">There is no department performance data available for this time period.</p>
+      </div>
+    );
+  }
 
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload?.length) {
@@ -68,7 +74,7 @@ const DepartmentPerformanceChart = ({ data, loading = false }) => {
     <div className="h-80">
       <ResponsiveContainer width="100%" height="100%">
         <BarChart
-          data={chartData}
+          data={processedData}
           margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
         >
           <CartesianGrid strokeDasharray="3 3" stroke="#E9ECEF" />

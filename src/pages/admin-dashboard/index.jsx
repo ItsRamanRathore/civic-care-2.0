@@ -11,6 +11,7 @@ import Icon from '../../components/AppIcon';
 import { useAuth } from '../../contexts/AuthContext';
 import { useCivicIssues } from '../../hooks/useCivicIssues';
 import { departmentService } from '../../services/departmentService';
+import AIOversight from './components/AIOversight';
 
 const AdminDashboard = () => {
   const { user, userProfile } = useAuth();
@@ -47,7 +48,7 @@ const AdminDashboard = () => {
   }, []);
 
   // Check if user has admin access
-  const isAdmin = userProfile?.role === 'admin' || user?.user_metadata?.role === 'admin';
+  const isAdmin = user && ['admin', 'super_admin', 'department_head'].includes(user.role);
 
   if (!isAdmin) {
     return (
@@ -191,10 +192,7 @@ const AdminDashboard = () => {
     }
   };
 
-  // Show bulk actions when issues are selected
-  useEffect(() => {
-    setShowBulkActions(selectedIssues?.length > 0);
-  }, [selectedIssues]);
+  const [activeTab, setActiveTab] = useState('issues');
 
   // Calculate dashboard metrics from stats
   const dashboardMetrics = stats ? [
@@ -206,18 +204,18 @@ const AdminDashboard = () => {
       icon: 'FileText'
     },
     {
+      title: 'AI Insights',
+      value: 'Review',
+      change: 'New suggestions',
+      changeType: 'info',
+      icon: 'Brain'
+    },
+    {
       title: 'Pending Review',
       value: (stats?.byStatus?.submitted || 0) + (stats?.byStatus?.in_review || 0),
       change: 'Needs attention',
       changeType: 'warning',
       icon: 'Clock'
-    },
-    {
-      title: 'In Progress',
-      value: stats?.byStatus?.in_progress || 0,
-      change: 'Being worked on',
-      changeType: 'info',
-      icon: 'Settings'
     },
     {
       title: 'Resolved',
@@ -229,42 +227,56 @@ const AdminDashboard = () => {
   ] : [];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background text-text-primary">
       <Header />
-      <div className="container mx-auto px-4 py-6">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-text-primary">Admin Dashboard</h1>
-              <p className="text-muted-foreground mt-1">
-                Manage and track community issues across all departments
-              </p>
-            </div>
-            
-
+      <div className="container mx-auto px-4 py-8">
+        {/* Header section */}
+        <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold">Admin Command Center</h1>
+            <p className="text-muted-foreground mt-1">
+              {activeTab === 'issues' ? 'Manage and track community issues across all departments' : 'Review and verify machine-learning categorizations'}
+            </p>
+          </div>
+          
+          <div className="flex bg-gray-100 p-1 rounded-lg">
+            <button 
+              onClick={() => setActiveTab('issues')}
+              className={`px-4 py-2 rounded-md transition-all font-medium text-sm flex items-center gap-2 ${activeTab === 'issues' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              <Icon name="List" size={16} />
+              Issues List
+            </button>
+            <button 
+              onClick={() => setActiveTab('ai')}
+              className={`px-4 py-2 rounded-md transition-all font-medium text-sm flex items-center gap-2 ${activeTab === 'ai' ? 'bg-white shadow-sm text-purple-600' : 'text-gray-500 hover:text-gray-700'}`}
+            >
+              <Icon name="Brain" size={16} />
+              AI Oversight
+            </button>
           </div>
         </div>
 
         {/* Metrics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {dashboardMetrics?.map((metric, index) => (
-            <MetricsCard
-              key={index}
-              title={metric?.title}
-              value={metric?.value}
-              change={metric?.change}
-              changeType={metric?.changeType}
-              icon={metric?.icon}
-              description=""
-            />
+            <div key={index} onClick={() => index === 1 && setActiveTab('ai')} className="cursor-pointer">
+              <MetricsCard
+                title={metric?.title}
+                value={metric?.value}
+                change={metric?.change}
+                changeType={metric?.changeType}
+                icon={metric?.icon}
+                description=""
+              />
+            </div>
           ))}
         </div>
 
-        {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Issues Table */}
-          <div className="lg:col-span-3">
+        {activeTab === 'issues' ? (
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            {/* Issues Table Container */}
+            <div className="lg:col-span-3">
             <div className="bg-card border border-border rounded-lg">
               <div className="p-6 border-b border-border">
                 <div className="flex items-center justify-between">
@@ -337,20 +349,11 @@ const AdminDashboard = () => {
                 />
               )}
             </div>
+            </div>
           </div>
-
-          {/* Activity Feed */}
-          <div className="lg:col-span-1 space-y-6">
-            <ActivityFeed 
-              issues={issues?.slice(0, 10) || []} // Show recent 10 issues
-              loading={loading}
-              activities={[]}
-            />
-            
-            {/* Notification Settings */}
-            <NotificationSettings />
-          </div>
-        </div>
+        ) : (
+          <AIOversight />
+        )}
 
         {/* Assignment Modal */}
         <AssignmentModal

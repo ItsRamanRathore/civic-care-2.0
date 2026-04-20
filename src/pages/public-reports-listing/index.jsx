@@ -139,17 +139,25 @@ const PublicReportsListing = () => {
     // Apply sorting
     switch (filters?.sortBy) {
       case 'newest':
-        filtered?.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        filtered?.sort((a, b) => {
+          const dateB = new Date(b.created_at || b.createdAt || Date.now());
+          const dateA = new Date(a.created_at || a.createdAt || Date.now());
+          return dateB - dateA;
+        });
         break;
       case 'oldest':
-        filtered?.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+        filtered?.sort((a, b) => {
+          const dateB = new Date(b.created_at || b.createdAt || Date.now());
+          const dateA = new Date(a.created_at || a.createdAt || Date.now());
+          return dateA - dateB;
+        });
         break;
       case 'priority':
         const priorityOrder = { critical: 4, high: 3, medium: 2, low: 1 };
-        filtered?.sort((a, b) => priorityOrder?.[b?.priority] - priorityOrder?.[a?.priority]);
+        filtered?.sort((a, b) => (priorityOrder?.[b?.priority] || 0) - (priorityOrder?.[a?.priority] || 0));
         break;
       case 'most_voted':
-        filtered?.sort((a, b) => (b?.upvoteCount || 0) - (a?.upvoteCount || 0));
+        filtered?.sort((a, b) => (b?.votes?.upvotes || b?.upvoteCount || 0) - (a?.votes?.upvotes || a?.upvoteCount || 0));
         break;
       default:
         break;
@@ -205,19 +213,19 @@ const PublicReportsListing = () => {
           {stats && (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               <div className="bg-card border border-border rounded-lg p-4">
-                <div className="text-2xl font-bold text-text-primary">{stats?.total}</div>
+                <div className="text-2xl font-bold text-text-primary">{stats.total || 0}</div>
                 <div className="text-sm text-muted-foreground">Total Reports</div>
               </div>
               <div className="bg-card border border-border rounded-lg p-4">
-                <div className="text-2xl font-bold text-green-600">{stats?.byStatus?.resolved || 0}</div>
+                <div className="text-2xl font-bold text-green-600">{(stats.byStatus && stats.byStatus.resolved) || 0}</div>
                 <div className="text-sm text-muted-foreground">Resolved</div>
               </div>
               <div className="bg-card border border-border rounded-lg p-4">
-                <div className="text-2xl font-bold text-yellow-600">{stats?.byStatus?.in_progress || 0}</div>
+                <div className="text-2xl font-bold text-yellow-600">{(stats.byStatus && (stats.byStatus.in_progress || stats.byStatus.assigned)) || 0}</div>
                 <div className="text-sm text-muted-foreground">In Progress</div>
               </div>
               <div className="bg-card border border-border rounded-lg p-4">
-                <div className="text-2xl font-bold text-blue-600">{stats?.recentCount}</div>
+                <div className="text-2xl font-bold text-blue-600">{stats.recentCount || 0}</div>
                 <div className="text-sm text-muted-foreground">This Week</div>
               </div>
             </div>
@@ -232,7 +240,8 @@ const PublicReportsListing = () => {
           onSearchChange={handleSearch}
           onSortChange={handleSortChange}
           onViewToggle={setViewMode}
-          totalResults={processedIssues?.length || 0}
+          currentView={viewMode}
+          totalCount={processedIssues?.length || 0}
         />
 
         {/* Loading State */}
