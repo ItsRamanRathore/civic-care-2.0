@@ -159,16 +159,28 @@ app.get('/api/health', (req, res) => {
 });
 
 // Export the app for Vercel
+// Final catch-all for debugging paths
+app.all('*', (req, res) => {
+  res.status(404).json({ 
+    message: 'Path not found', 
+    url: req.url,
+    method: req.method
+  });
+});
+
+// Export for Vercel
 module.exports = app;
 
 // Initial connection for non-serverless environments
-connectDB();
-
-// Local development listener
-if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
-  const PORT = process.env.PORT || 5000;
-  server.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT}`);
+if (!process.env.VERCEL) {
+  connectDB().then(() => {
+    const PORT = process.env.PORT || 5000;
+    const server = app.get('server');
+    if (server) {
+      server.listen(PORT, () => console.log(`🚀 Monolith running on port ${PORT}`));
+    } else {
+      app.listen(PORT, () => console.log(`🚀 App running on port ${PORT}`));
+    }
   });
 }
 
