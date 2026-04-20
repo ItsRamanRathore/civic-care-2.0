@@ -33,42 +33,16 @@ const limiter = rateLimit({
   legacyHeaders: false,
 });
 
-// Initialize session store (Redis with MongoDB fallback)
-const { connectRedis } = require('./utils/redis');
-let store;
+// Initialize session store
+const store = new MongoDBStore({
+  uri: process.env.MONGODB_URI,
+  collection: 'sessions',
+  expires: 1000 * 60 * 60 * 24 * 7, // 1 week
+});
 
-const setupSessionStore = async () => {
-  try {
-    const redisClient = await connectRedis();
-    
-    if (redisClient) {
-      console.log('🔄 Initializing Redis session store...');
-      const { RedisStore } = require('connect-redis');
-      
-      store = new RedisStore({
-        client: redisClient,
-        prefix: "civic_care:",
-      });
-    } else {
-      console.log('📊 Initializing MongoDB session store...');
-      store = new MongoDBStore({
-        uri: process.env.MONGODB_URI,
-        collection: 'sessions',
-        expires: 1000 * 60 * 60 * 24 * 7, // 1 week
-      });
-    }
-
-    if (store.on) {
-      store.on('error', function(error) {
-        console.error('Session Store Error:', error);
-      });
-    }
-  } catch (err) {
-    console.error('Core Session Store Initialization Error:', err);
-  }
-};
-
-setupSessionStore();
+store.on('error', function(error) {
+  console.error('Session Store Error:', error);
+});
 
 // Middleware
 app.use(helmet()); // Set security HTTP headers
