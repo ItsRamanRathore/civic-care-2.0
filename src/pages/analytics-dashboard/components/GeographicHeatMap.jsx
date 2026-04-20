@@ -6,13 +6,13 @@ const GeographicHeatMap = ({ data, loading = false }) => {
   const [selectedArea, setSelectedArea] = useState(null);
 
   // Process real data or use fallback
-  const geographicAreas = data && data.length > 0 ?
+  const geographicAreas = (data || [])?.length > 0 ?
     data.map((item, index) => ({
       id: index + 1,
       name: item.region || 'Unknown Area',
-      issues: item.issues || 0,
-      lat: 28.6139 + (index * 0.05), // Mock coordinates for visualization
-      lng: 77.2090 + (index * 0.05),
+      issues: Number(item.issues) || 0,
+      lat: Number(item.lat) || (28.6139 + (index * 0.05)),
+      lng: Number(item.lng) || (77.2090 + (index * 0.05)),
       severity: item.severity || 'low'
     })) : [
       { id: 1, name: 'No Data Available', issues: 0, lat: 28.6139, lng: 77.2090, severity: 'low' }

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 import { useTranslation } from '../contexts/LanguageContext';
 import Header from '../components/ui/Header';
 import Button from '../components/ui/Button';
@@ -11,6 +11,7 @@ import Icon from '../components/AppIcon';
 const Signup = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const { signUp } = useAuth();
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -92,115 +93,27 @@ const Signup = () => {
     try {
       console.log('🚀 Starting signup process for:', formData?.email);
 
-      // Step 1: Create the user account
-      const { data, error } = await supabase?.auth?.signUp({
-        email: formData?.email,
-        password: formData?.password,
-        options: {
-          data: {
-            full_name: formData?.fullName,
-            role: formData?.role,
-            phone: formData?.phone
-          }
-        }
+      const { data, error } = await signUp({
+        email: formData.email,
+        password: formData.password,
+        full_name: formData.fullName,
+        role: formData.role,
+        phone: formData.phone
       });
 
-      console.log('📝 Signup response:', { data, error });
-
       if (error) {
-        console.error('❌ Signup error:', error);
-        if (error?.message?.includes('User already registered')) {
-          setAuthError(t('userAlreadyExists'));
-        } else if (error?.message?.includes('Failed to fetch') ||
-          error?.message?.includes('AuthRetryableFetchError')) {
-          setAuthError(t('connectionError'));
-        } else {
-          setAuthError(error?.message || t('signupError'));
-        }
+        setAuthError(error.message || t('signupError'));
         return;
       }
 
-      if (!data?.user) {
-        console.error('❌ No user data returned from signup');
-        setAuthError(t('accountCreationFailed'));
-        return;
-      }
-
-      console.log('✅ User created successfully:', data.user.id);
-
-      // Step 2: Create user profile manually (in case trigger doesn't work)
-      try {
-        console.log('👤 Creating user profile...');
-        const { error: profileError } = await supabase
-          .from('user_profiles')
-          .insert([{
-            id: data.user.id,
-            email: formData?.email,
-            full_name: formData?.fullName,
-            role: formData?.role,
-            phone: formData?.phone || null
-          }]);
-
-        if (profileError && !profileError.message.includes('duplicate key')) {
-          console.warn('⚠️ Profile creation failed:', profileError);
-          // Don't fail the signup for this
+      setSuccessMessage(t('accountCreatedRedirecting'));
+      setTimeout(() => {
+        if (formData.role === 'admin' || formData.role === 'department_manager') {
+          navigate('/admin-dashboard');
         } else {
-          console.log('✅ User profile created successfully');
+          navigate('/');
         }
-      } catch (profileCreationError) {
-        console.warn('⚠️ Profile creation error:', profileCreationError);
-        // Don't fail the signup for this
-      }
-
-      // Step 3: Show success message and handle redirection
-      if (data?.user?.email_confirmed_at) {
-        // User is immediately confirmed - try to sign them in
-        console.log('🔐 User confirmed, attempting automatic sign in...');
-
-        setSuccessMessage(t('accountCreatedSigningIn'));
-
-        // Wait a moment for the profile to be created
-        await new Promise(resolve => setTimeout(resolve, 1000));
-
-        try {
-          const { data: signInData, error: signInError } = await supabase?.auth?.signInWithPassword({
-            email: formData?.email,
-            password: formData?.password
-          });
-
-          if (signInError) {
-            console.error('❌ Auto sign-in failed:', signInError);
-            setSuccessMessage(t('accountCreatedPleaseSignIn'));
-            setTimeout(() => {
-              navigate('/login');
-            }, 3000);
-          } else {
-            console.log('✅ Auto sign-in successful, redirecting...');
-            setSuccessMessage(t('accountCreatedRedirecting'));
-            setTimeout(() => {
-              const userRole = formData?.role;
-              if (userRole === 'admin' || userRole === 'department_manager') {
-                navigate('/admin-dashboard');
-              } else {
-                navigate('/');
-              }
-            }, 2000);
-          }
-        } catch (autoSignInError) {
-          console.error('❌ Auto sign-in error:', autoSignInError);
-          setSuccessMessage(t('accountCreatedPleaseSignIn'));
-          setTimeout(() => {
-            navigate('/login');
-          }, 3000);
-        }
-      } else {
-        // User needs to confirm email
-        console.log('📧 Email confirmation required');
-        setSuccessMessage(t('accountCreatedCheckEmail'));
-        setTimeout(() => {
-          navigate('/login');
-        }, 4000);
-      }
+      }, 2000);
 
     } catch (error) {
       console.error('💥 Unexpected signup error:', error);

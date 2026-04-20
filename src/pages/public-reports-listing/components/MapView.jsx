@@ -329,7 +329,7 @@ const MapView = ({ issues, onIssueSelect, selectedIssue }) => {
                 </div>
                 <div className="flex items-center gap-1">
                   <Icon name="Calendar" size={12} />
-                  <span>{new Date(selectedIssue.createdAt)?.toLocaleDateString('en-IN')}</span>
+                  <span>{selectedIssue.createdAt ? new Date(selectedIssue.createdAt).toLocaleDateString('en-IN') : 'N/A'}</span>
                 </div>
               </div>
               {selectedIssue?.coordinates && (

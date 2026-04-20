@@ -82,9 +82,9 @@ const IssueCard = ({ issue, onViewDetails }) => {
     <div className="bg-card border border-border rounded-lg overflow-hidden shadow-card hover:shadow-modal transition-smooth group">
       {/* Image Section */}
       <div className="relative h-48 overflow-hidden bg-muted">
-        {issue?.issue_images && issue.issue_images.length > 0 ? (
+        {issue?.images && issue.images.length > 0 ? (
           <Image
-            src={issue.issue_images[0].image_url || issue.issue_images[0].image_path}
+            src={issue.images[0]}
             alt={issue?.title}
             className="w-full h-full object-cover group-hover:scale-105 transition-layout"
             onError={(e) => {
@@ -101,17 +101,17 @@ const IssueCard = ({ issue, onViewDetails }) => {
         )}
 
         {/* Image Count Badge */}
-        {issue?.issue_images && issue.issue_images.length > 1 && (
+        {issue?.images && issue.images.length > 1 && (
           <div className="absolute top-3 left-3 bg-black/70 text-white px-2 py-1 rounded text-xs flex items-center gap-1">
             <Icon name="Camera" size={12} />
-            {issue.issue_images.length}
+            {issue.images.length}
           </div>
         )}
 
         {/* Status Badge */}
         <div className="absolute top-3 right-3">
           <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(issue?.status)}`}>
-            {issue?.status?.replace('_', ' ')?.toUpperCase()}
+            {(issue?.status || 'submitted')?.replace('_', ' ')?.toUpperCase()}
           </span>
         </div>
 
@@ -121,15 +121,8 @@ const IssueCard = ({ issue, onViewDetails }) => {
             <div className={`w-3 h-3 rounded-full ${getPriorityColor(issue?.priority)} bg-current`} />
           </div>
         )}
-
-        {/* Image Count or Status */}
-        {issue?.issue_images && issue.issue_images.length > 0 && (
-          <div className="absolute bottom-3 right-3 bg-black/50 text-white px-2 py-1 rounded text-xs flex items-center gap-1">
-            <Icon name="Camera" size={12} />
-            {issue.issue_images.length}
-          </div>
-        )}
       </div>
+
       {/* Content Section */}
       <div className="p-4">
         {/* Category and Date */}
@@ -139,24 +132,24 @@ const IssueCard = ({ issue, onViewDetails }) => {
             <span className="capitalize">{issue?.category?.replace('_', ' ')}</span>
           </div>
           <span className="text-xs text-muted-foreground">
-            {formatDate(issue?.created_at)}
+            {formatDate(issue?.created_at || issue.createdAt)}
           </span>
         </div>
 
         {/* Title */}
         <h3 className="font-heading font-semibold text-lg text-card-foreground mb-2 line-clamp-2 group-hover:text-primary transition-smooth">
-          {issue?.title}
+          {issue?.title || 'Untitled Issue'}
         </h3>
 
         {/* Description */}
         <p className="text-sm text-muted-foreground mb-3 line-clamp-3">
-          {truncateText(issue?.description)}
+          {truncateText(issue?.description || 'No description provided')}
         </p>
 
         {/* Location */}
         <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
           <Icon name="MapPin" size={14} />
-          <span className="truncate">{issue?.address}</span>
+          <span className="truncate">{issue?.address || 'Location not specified'}</span>
         </div>
 
         {/* Footer */}
@@ -167,16 +160,16 @@ const IssueCard = ({ issue, onViewDetails }) => {
               <Icon name="User" size={12} color="white" />
             </div>
             <span className="text-xs text-muted-foreground">
-              {issue?.reporter_name || issue?.user_profiles?.full_name || 'Anonymous'}
+              {issue?.reporter?.name || 'Anonymous'}
             </span>
           </div>
 
           {/* Action Buttons */}
           <div className="flex items-center gap-2">
-            {(issue?.upvoteCount || 0) > 0 && (
+            {(issue?.votes?.upvotes || 0) > 0 && (
               <div className="flex items-center gap-1 text-xs text-muted-foreground">
                 <Icon name="ThumbsUp" size={12} />
-                <span>{issue?.upvoteCount}</span>
+                <span>{issue?.votes?.upvotes}</span>
               </div>
             )}
 

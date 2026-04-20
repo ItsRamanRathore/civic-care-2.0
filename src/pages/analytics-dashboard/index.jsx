@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
 
 import Button from '../../components/ui/Button';
 import Header from '../../components/ui/Header';
@@ -15,6 +16,7 @@ import DateRangeSelector from './components/DateRangeSelector';
 import analyticsService from '../../services/analyticsService';
 
 const AnalyticsDashboard = () => {
+  const { user: currentUser } = useAuth();
   const [loading, setLoading] = useState(true);
   const [realTimeEnabled, setRealTimeEnabled] = useState(true);
   const [dateRange, setDateRange] = useState({
@@ -24,6 +26,8 @@ const AnalyticsDashboard = () => {
   });
   const [chartType, setChartType] = useState('line');
   const [refreshTimestamp, setRefreshTimestamp] = useState(new Date().toLocaleString());
+  const [anomalies, setAnomalies] = useState([]);
+  const [forecast, setForecast] = useState(null);
   
   // Real-time data state
   const [analyticsData, setAnalyticsData] = useState({
@@ -37,15 +41,19 @@ const AnalyticsDashboard = () => {
     error: null
   });
 
-  // Real-time subscription ref
+  // Real-time subscription refs (Phase 3)
   const subscriptionRef = useRef(null);
   const refreshIntervalRef = useRef(null);
 
-  // Mock current user for header
-  const currentUser = {
-    name: "Admin User",
-    email: "admin@civicare.gov.in"
-  };
+  // Fetch anomalies and forecasts
+  const fetchIntelligenceData = useCallback(async () => {
+    const [anomalyRes, forecastRes] = await Promise.all([
+      analyticsService.getAnomalies(),
+      analyticsService.getForecast()
+    ]);
+    if (!anomalyRes.error) setAnomalies(anomalyRes.data);
+    if (!forecastRes.error) setForecast(forecastRes.data);
+  }, []);
 
   // Fetch analytics data
   const fetchAnalyticsData = useCallback(async () => {
@@ -55,26 +63,27 @@ const AnalyticsDashboard = () => {
       
       const data = await analyticsService.getAnalyticsData(dateRange);
       
-      if (data.error) {
-        console.error('❌ Analytics data error:', data.error);
-        setAnalyticsData(prev => ({ ...prev, error: data.error }));
+      if (data?.error) {
+        setAnalyticsData(prev => ({ ...prev, error: String(data.error) }));
       } else {
-        console.log('✅ Analytics data loaded successfully');
         setAnalyticsData(data);
-        setRefreshTimestamp(new Date(data.lastUpdated).toLocaleString());
+        setRefreshTimestamp(new Date(data.lastUpdated || Date.now()).toLocaleString());
       }
+      
+      // Also fetch intelligence insights
+      await fetchIntelligenceData();
     } catch (error) {
       console.error('❌ Error fetching analytics data:', error);
       setAnalyticsData(prev => ({ ...prev, error: error.message }));
     } finally {
       setLoading(false);
     }
-  }, [dateRange]);
+  }, [dateRange, fetchIntelligenceData]);
 
-  // Handle manual refresh
-  const handleRefreshData = useCallback(() => {
-    fetchAnalyticsData();
-  }, [fetchAnalyticsData]);
+  const handleExportData = async (type = 'pdf') => {
+    const res = await analyticsService.exportReport(type, analyticsData);
+    if (res.success) alert(`${type.toUpperCase()} Report Exported Successfully!`);
+  };
 
   // Handle real-time data updates
   const handleRealTimeUpdate = useCallback((payload) => {
@@ -88,6 +97,10 @@ const AnalyticsDashboard = () => {
     refreshIntervalRef.current = setTimeout(() => {
       fetchAnalyticsData();
     }, 2000); // Wait 2 seconds before refreshing
+  }, [fetchAnalyticsData]);
+
+  const handleRefreshData = useCallback(() => {
+    fetchAnalyticsData();
   }, [fetchAnalyticsData]);
 
   // Setup real-time subscription
@@ -125,16 +138,6 @@ const AnalyticsDashboard = () => {
     });
   }, [setupRealTimeSubscription, cleanupRealTimeSubscription]);
 
-  const handleExportChart = (chartName) => {
-    console.log(`Exporting ${chartName} chart...`);
-    // Export logic would be implemented here
-  };
-
-  const handleExportData = () => {
-    console.log('Exporting analytics data to CSV...');
-    // CSV export logic would be implemented here
-  };
-
   const handleDateRangeChange = useCallback((newRange) => {
     setDateRange(newRange);
     console.log('📅 Date range changed:', newRange);
@@ -169,42 +172,24 @@ const AnalyticsDashboard = () => {
         <Breadcrumb />
         
         {/* Page Header */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-8">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-8 mt-4">
           <div>
             <h1 className="text-3xl font-bold text-foreground mb-2">
               Analytics Dashboard
-              {realTimeEnabled && (
-                <span className="ml-3 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                  <div className="w-2 h-2 bg-green-400 rounded-full mr-1 animate-pulse"></div>
-                  Live
-                </span>
-              )}
+              <span className="ml-3 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                <span className="w-2 h-2 bg-green-400 rounded-full mr-1 animate-pulse inline-block"></span>
+                Active Intel
+              </span>
             </h1>
             <p className="text-muted-foreground">
-              Comprehensive insights into civic issue patterns and resolution performance
+              Phase 3: Real-time intelligence, SLA monitoring, and predictive forecasting
             </p>
-            {analyticsData.error && (
-              <p className="text-sm text-red-600 mt-1">
-                ⚠️ {analyticsData.error}
-              </p>
-            )}
           </div>
           
-          <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-3 sm:space-y-0 sm:space-x-4 mt-4 lg:mt-0">
-            <DateRangeSelector onDateRangeChange={handleDateRangeChange} />
+          <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
+            <DateRangeSelector onDateRangeChange={setDateRange} />
             
             <div className="flex space-x-2">
-              <Button
-                variant={realTimeEnabled ? "default" : "outline"}
-                size="sm"
-                onClick={toggleRealTime}
-                iconName={realTimeEnabled ? "Zap" : "ZapOff"}
-                iconPosition="left"
-                iconSize={16}
-              >
-                {realTimeEnabled ? "Live" : "Manual"}
-              </Button>
-              
               <Button
                 variant="outline"
                 size="sm"
@@ -214,22 +199,44 @@ const AnalyticsDashboard = () => {
                 iconPosition="left"
                 iconSize={16}
               >
-                Refresh
+                Sync
               </Button>
               
               <Button
                 variant="outline"
                 size="sm"
-                onClick={handleExportData}
+                onClick={() => handleExportData('pdf')}
                 iconName="Download"
                 iconPosition="left"
                 iconSize={16}
               >
-                Export Report
+                Export PDF
               </Button>
             </div>
           </div>
         </div>
+
+        {/* Anomaly Alerts (Phase 3 Intelligence) */}
+        {anomalies.length > 0 && (
+          <div className="mb-8 space-y-3">
+            {anomalies.map((anomaly, idx) => (
+              <div key={idx} className={`p-4 rounded-lg border-l-4 flex items-center justify-between shadow-sm ${
+                anomaly.severity === 'critical' ? 'bg-red-50 border-red-500 text-red-800' :
+                anomaly.severity === 'high' ? 'bg-orange-50 border-orange-500 text-orange-800' :
+                'bg-blue-50 border-blue-500 text-blue-800'
+              }`}>
+                <div className="flex items-center">
+                  <span className="mr-3 text-xl">{anomaly.severity === 'critical' ? '⚠️' : '🔍'}</span>
+                  <div>
+                    <h4 className="font-bold uppercase text-xs tracking-wider">{anomaly.type.replace('_', ' ')} Detected</h4>
+                    <p className="text-sm">{anomaly.message}</p>
+                  </div>
+                </div>
+                <Button variant="ghost" size="sm" className="text-current underline decoration-dotted">Investigate</Button>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Key Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -246,6 +253,35 @@ const AnalyticsDashboard = () => {
             />
           ))}
         </div>
+
+        {/* Forecast Analysis (Phase 3 Intelligence) */}
+        {forecast && forecast.budget && (
+          <div className="grid grid-cols-1 gap-6 mb-8">
+            <ChartContainer
+              title="Predictive Reporting Forecast (30 Days)"
+              onExport={() => handleExportData('csv')}
+              onRefresh={fetchIntelligenceData}
+              loading={loading}
+              controls={
+                <div className="flex items-center text-xs text-blue-600 font-medium">
+                  {forecast.metadata?.trend === 'increasing' ? '📈 Upward Trend' : '📉 Downward Trend'}
+                  <span className="ml-2 px-2 py-0.5 bg-blue-100 rounded">R²: {forecast.metadata?.r2?.toFixed(3) || '0.000'}</span>
+                </div>
+              }
+            >
+              <div className="p-4 bg-muted/30 rounded-lg flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Estimated Maintenance Budget (Next 30 Days)</p>
+                  <h3 className="text-2xl font-bold">{forecast.budget.currency || 'INR'} {(forecast.budget.estimatedTotalCost || 0).toLocaleString()}</h3>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm text-muted-foreground">Predicted New Reports</p>
+                  <h3 className="text-2xl font-bold">{forecast.budget.estimatedCount || 0}</h3>
+                </div>
+              </div>
+            </ChartContainer>
+          </div>
+        )}
 
         {/* Charts Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
@@ -412,7 +448,7 @@ const AnalyticsDashboard = () => {
             {realTimeEnabled ? (
               <>
                 <span className="inline-flex items-center">
-                  <div className="w-2 h-2 bg-green-400 rounded-full mr-1 animate-pulse"></div>
+                  <span className="w-2 h-2 bg-green-400 rounded-full mr-1 animate-pulse inline-block"></span>
                   Real-time updates enabled
                 </span>
                 {analyticsData.lastUpdated && (

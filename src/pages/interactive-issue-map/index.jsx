@@ -9,7 +9,11 @@ import MapControls from './components/MapControls';
 import MapSearchBar from './components/MapSearchBar';
 import MapLegend from './components/MapLegend';
 import IssueDetailsPanel from './components/IssueDetailsPanel';
-import { useCivicIssues } from '../../hooks/useCivicIssues';
+import useCivicIssues from '../../hooks/useCivicIssues';
+import * as routingService from '../../services/routingService';
+import { Polyline } from 'react-leaflet';
+import useGeofencing from '../../hooks/useGeofencing';
+import { useAuth } from '../../contexts/AuthContext';
 
 const InteractiveIssueMap = () => {
   const [selectedIssue, setSelectedIssue] = useState(null);
@@ -21,11 +25,17 @@ const InteractiveIssueMap = () => {
   const [isDrawingMode, setIsDrawingMode] = useState(false);
   const [searchLocation, setSearchLocation] = useState(null);
   const [searchRadius, setSearchRadius] = useState(null);
+  const [plannedRoute, setPlannedRoute] = useState(null); // ORS GeoJSON
+  const [routeStops, setRouteStops] = useState([]); // Array of issue IDs/objects
+  const [routeStats, setRouteStats] = useState(null);
   
   // Use real data from the hook - fetch all public issues, not user-specific
-  const { issues: realIssues, loading: isLoading } = useCivicIssues({
-    // No user filter - get all public issues
-  });
+  const { issues: realIssues, loading: isLoading } = useCivicIssues({});
+  
+  // Real-time geofencing for nearby alerts
+  const { nearbyIssues } = useGeofencing(realIssues || [], 0.5); // 500m radius
+  
+  const { user } = useAuth();
 
   // Enhanced mock issues with coordinates for demonstration
   const enhancedMockIssues = [
@@ -108,20 +118,20 @@ const InteractiveIssueMap = () => {
   }) || [];
 
   // Use real issues with valid coordinates, otherwise fall back to enhanced mock data
-  const displayIssues = issuesWithValidCoordinates.length > 0 ? issuesWithValidCoordinates : enhancedMockIssues;
+  const displayIssues = issuesWithValidCoordinates.length > 0 ? issuesWithValidCoordinates : (realIssues?.length > 0 ? [] : enhancedMockIssues);
   
   console.log('🗺️ Map Data Debug:', {
     realIssuesCount: realIssues?.length || 0,
     realIssuesWithValidCoords: issuesWithValidCoordinates.length,
     displayIssuesCount: displayIssues.length,
-    usingMockData: issuesWithValidCoordinates.length === 0,
+    usingMockData: issuesWithValidCoordinates.length === 0 && (!realIssues || realIssues.length === 0),
     sampleRealIssues: realIssues?.slice(0, 3)?.map(issue => ({
-      id: issue.id,
-      title: issue.title?.substring(0, 30) + '...',
-      hasValidCoordinates: issuesWithValidCoordinates.some(valid => valid.id === issue.id),
-      coordinates: issue.coordinates,
-      latitude: issue.latitude,
-      longitude: issue.longitude
+      id: issue?.id || issue?._id || 'unknown',
+      title: (issue?.title || 'No Title')?.substring(0, 30) + '...',
+      hasValidCoordinates: issuesWithValidCoordinates.some(valid => (valid.id || valid._id) === (issue?.id || issue?._id)),
+      coordinates: issue?.coordinates,
+      latitude: issue?.latitude,
+      longitude: issue?.longitude
     })) || []
   });
 
@@ -356,7 +366,10 @@ const InteractiveIssueMap = () => {
       const timeLimit = timeRanges?.[selectedTimeRange];
       if (timeLimit) {
         filtered = filtered?.filter(issue => {
-          const issueDate = new Date(issue.reportedAt);
+          const dateStr = issue.reportedAt || issue.created_at;
+          if (!dateStr) return false;
+          const issueDate = new Date(dateStr);
+          if (isNaN(issueDate.getTime())) return false;
           return (now - issueDate) <= timeLimit;
         });
       }
@@ -404,10 +417,45 @@ const InteractiveIssueMap = () => {
     setIsDrawingMode(!isDrawingMode);
   };
 
+  const handleAddToRoute = (issue) => {
+    const newStops = [...routeStops, issue];
+    setRouteStops(newStops);
+  };
+
+  const handleOptimizeRoute = async () => {
+    if (routeStops.length < 2) return;
+    
+    try {
+      const issueIds = routeStops.map(s => s.id || s._id);
+      // Use the first stop as the starting point for optimization
+      const startLocation = routeStops[0].coordinates;
+      
+      const optimizedData = await routingService.fetchOptimizedRoute(issueIds, startLocation);
+      
+      if (optimizedData && optimizedData.optimizedPath) {
+        // Map the optimized IDs back to the issue objects in the correct order
+        const optimizedStops = optimizedData.optimizedPath.map(wp => 
+          routeStops.find(s => (s.id || s._id) === wp.id)
+        ).filter(Boolean);
+        
+        setRouteStops(optimizedStops);
+        // Stats will be updated by the RoutingMachine component automatically or we can set them if needed
+      }
+    } catch (error) {
+      console.error('Optimization failed:', error);
+    }
+  };
+
+  const handleClearRoute = () => {
+    setRouteStops([]);
+    setPlannedRoute(null);
+    setRouteStats(null);
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
-        <Header currentUser={currentUser} notificationCount={3} />
+        <Header currentUser={user} notificationCount={3} />
         <div className="flex items-center justify-center h-96">
           <div className="text-center">
             <Icon name="Loader2" size={32} className="animate-spin text-primary mx-auto mb-4" />
@@ -430,15 +478,16 @@ const InteractiveIssueMap = () => {
         {/* Map Interface */}
         <div className="relative h-[calc(100vh-120px)]">
           {/* Map Container */}
-          <MapContainer
-            issues={filteredIssues}
+           <MapContainer
+            issues={filteredIssues.length > 0 ? filteredIssues : (realIssues || enhancedMockIssues)}
             selectedIssue={selectedIssue}
             onIssueSelect={handleIssueSelect}
-            onMapClick={() => {}} // Add this required prop
+            onMapClick={() => {}}
             searchLocation={searchLocation}
             searchRadius={searchRadius}
             activeLayers={activeLayers}
             isDrawingMode={isDrawingMode}
+            routeStops={routeStops}
           />
 
           {/* Map Search Bar */}
@@ -470,7 +519,65 @@ const InteractiveIssueMap = () => {
               issue={selectedIssue}
               onClose={() => setSelectedIssue(null)}
               onReportSimilar={handleReportSimilar}
+              onAddToRoute={handleAddToRoute}
+              isInRoute={routeStops.some(s => s.id === selectedIssue.id)}
             />
+          )}
+
+          {/* Route Planner Overlay */}
+          {routeStops.length > 0 && (
+            <div className="absolute top-20 left-4 z-30 bg-white/95 backdrop-blur p-4 rounded-xl shadow-xl border border-blue-100 min-w-64 max-w-sm">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                  <Icon name="Navigation" className="text-blue-600" size={16} />
+                  Inspection Route
+                </h4>
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={handleOptimizeRoute} 
+                    className="text-blue-600 hover:text-blue-700 p-1 rounded-md hover:bg-blue-50 transition-colors"
+                    title="Optimize Route"
+                  >
+                    <Icon name="Wand2" size={14} />
+                  </button>
+                  <button onClick={handleClearRoute} className="text-gray-400 hover:text-red-500">
+                    <Icon name="Trash2" size={14} />
+                  </button>
+                </div>
+              </div>
+              
+              <div className="space-y-2 mb-4 max-h-48 overflow-y-auto pr-2">
+                {routeStops.map((stop, idx) => (
+                  <div key={idx} className="flex items-start gap-3 p-2 bg-gray-50 rounded-md border border-gray-100">
+                    <div className="flex-shrink-0 w-5 h-5 bg-blue-600 text-white rounded-full flex items-center justify-center text-[10px] font-bold">
+                      {idx + 1}
+                    </div>
+                    <div className="flex-1 overflow-hidden">
+                      <p className="text-xs font-semibold text-gray-800 truncate">{stop.title}</p>
+                      <p className="text-[10px] text-gray-500 truncate">{stop.address}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {routeStats && (
+                <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
+                  <div className="flex gap-4">
+                    <div className="text-center">
+                      <p className="text-[10px] uppercase font-bold text-gray-400">Dist</p>
+                      <p className="text-sm font-bold text-gray-800">{routeStats.distanceKm}km</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-[10px] uppercase font-bold text-gray-400">Est</p>
+                      <p className="text-sm font-bold text-gray-800">{routeStats.durationMin}m</p>
+                    </div>
+                  </div>
+                  <Button size="sm" className="bg-blue-600 shadow-sm">
+                    Navigate
+                  </Button>
+                </div>
+              )}
+            </div>
           )}
 
           {/* Quick Actions Floating Button */}

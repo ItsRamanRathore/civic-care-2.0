@@ -9,7 +9,7 @@ import { useTranslation } from '../../contexts/LanguageContext';
 const Header = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, userProfile, signOut, loading } = useAuth();
+  const { user, signOut, loading } = useAuth();
   const { t } = useTranslation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -28,13 +28,13 @@ const Header = () => {
   const isActive = (path) => location?.pathname === path;
   
   const navigationItems = [
-    { path: '/', label: t('home'), icon: 'Home' },
-    { path: '/public-reports-listing', label: t('browseIssues'), icon: 'FileText' },
-    { path: '/interactive-issue-map', label: t('issueMap'), icon: 'Map' },
-    { path: '/issue-reporting-form', label: t('reportIssue'), icon: 'Plus' },
-    { path: '/analytics-dashboard', label: t('analytics'), icon: 'BarChart3' },
-    ...(user && (userProfile?.role === 'admin' || user?.user_metadata?.role === 'admin')
-      ? [{ path: '/admin-dashboard', label: t('admin'), icon: 'Shield' }]
+    { path: '/', label: t('home') || 'Home', icon: 'Home' },
+    { path: '/public-reports-listing', label: t('browseIssues') || 'Issues', icon: 'FileText' },
+    { path: '/interactive-issue-map', label: t('issueMap') || 'Map', icon: 'Map' },
+    { path: '/issue-reporting-form', label: t('reportIssue') || 'Report', icon: 'Plus' },
+    { path: '/analytics-dashboard', label: t('analytics') || 'Analytics', icon: 'BarChart3' },
+    ...(user && ['admin', 'super_admin', 'department_head'].includes(user.role)
+      ? [{ path: '/admin-dashboard', label: t('admin') || 'Admin', icon: 'Shield' }]
       : [])
   ];
 
@@ -82,10 +82,10 @@ const Header = () => {
               <div className="flex items-center space-x-3">
                 <div className="text-right">
                   <div className="text-sm font-medium text-text-primary">
-                    {userProfile?.full_name || user?.email?.split('@')?.[0] || 'User'}
+                    {user.full_name || user.email?.split('@')?.[0]}
                   </div>
                   <div className="text-xs text-muted-foreground capitalize">
-                    {userProfile?.role || 'Citizen'}
+                    {user.role?.replace('_', ' ') || 'Citizen'}
                   </div>
                 </div>
                 <Button
@@ -151,10 +151,10 @@ const Header = () => {
                   <div className="space-y-2">
                     <div className="px-3 py-2">
                       <div className="text-sm font-medium text-text-primary">
-                        {userProfile?.full_name || user?.email?.split('@')?.[0] || 'User'}
+                        {user.full_name || user.email?.split('@')?.[0]}
                       </div>
                       <div className="text-xs text-muted-foreground capitalize">
-                        {userProfile?.role || 'Citizen'}
+                        {user.role?.replace('_', ' ') || 'Citizen'}
                       </div>
                     </div>
                     <button
