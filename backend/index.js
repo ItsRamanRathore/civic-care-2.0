@@ -6,15 +6,18 @@ const http = require('http');
 const { Server } = require('socket.io');
 
 const app = express();
-const server = http.createServer(app);
-
-const io = new Server(server, {
-  cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-    credentials: true
-  },
-});
+let io;
+if (!process.env.VERCEL) {
+  const server = http.createServer(app);
+  io = new Server(server, {
+    cors: {
+      origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+      credentials: true
+    },
+  });
+  app.set('server', server);
+}
 
 // Security Middleware
 const helmet = require('helmet');
@@ -70,37 +73,27 @@ app.use(session({
   }
 }));
 
-// Socket.io for real-time updates
-io.on('connection', (socket) => {
-  console.log('A user connected:', socket.id);
+// Socket.io for real-time updates (Conditional for non-Serverless)
+if (io) {
+  io.on('connection', (socket) => {
+    console.log('A user connected:', socket.id);
+    
+    socket.on('join_admin_group', (role) => {
+      if (['super_admin', 'department_head', 'ward_officer'].includes(role)) {
+        socket.join('admin_room');
+      }
+    });
+
+    socket.on('join_ward', (wardName) => socket.join(`ward_${wardName}`));
+    socket.on('join_category', (categoryName) => socket.join(`category_${categoryName}`));
+    socket.on('join_issue', (issueId) => socket.join(issueId));
+    
+    socket.on('disconnect', () => console.log('User disconnected:', socket.id));
+  });
   
-  // Join role-based and category-based rooms for targeted alerts
-  socket.on('join_admin_group', (role) => {
-    if (['super_admin', 'department_head', 'ward_officer'].includes(role)) {
-      socket.join('admin_room');
-      console.log(`🛡️ Admin ${socket.id} joined admin_room`);
-    }
-  });
-
-  socket.on('join_ward', (wardName) => {
-    socket.join(`ward_${wardName}`);
-  });
-
-  socket.on('join_category', (categoryName) => {
-    socket.join(`category_${categoryName}`);
-  });
-
-  socket.on('join_issue', (issueId) => {
-    socket.join(issueId);
-  });
-
-  socket.on('disconnect', () => {
-    console.log('User disconnected:', socket.id);
-  });
-});
-
-// Store io in app for access in controllers
-app.set('io', io);
+  // Store io in app for access in controllers
+  app.set('io', io);
+}
 
 // Database connection
 const connectDB = async () => {
