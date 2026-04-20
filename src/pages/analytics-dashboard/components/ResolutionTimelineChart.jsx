@@ -1,15 +1,21 @@
 import React from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts';
+import Icon from '../../../components/AppIcon';
 
 const ResolutionTimelineChart = ({ data, chartType = 'line', loading = false }) => {
   // Process real data or use fallback
   const chartData = data && data.length > 0 ?
-    data.map(item => ({
-      date: item.date ? new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'Unknown',
-      reported: item.total || 0,
-      resolved: item.resolved || 0,
-      pending: item.pending || 0
-    })) : [
+    data.map(item => {
+      const dateObj = item.date ? new Date(item.date) : null;
+      const isValidDate = dateObj && !isNaN(dateObj.getTime());
+      
+      return {
+        date: isValidDate ? dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'Unknown',
+        reported: Number(item.total) || 0,
+        resolved: Number(item.resolved) || 0,
+        pending: Number(item.pending) || 0
+      };
+    }) : [
       { date: 'No Data', reported: 0, resolved: 0, pending: 0 }
     ];
 
@@ -29,13 +35,14 @@ const ResolutionTimelineChart = ({ data, chartType = 'line', loading = false }) 
     return null;
   };
 
-  if (loading) {
+  if (!data || data.length === 0) {
     return (
-      <div className="h-80 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
-          <p className="text-sm text-muted-foreground">Loading timeline data...</p>
+      <div className="h-80 flex flex-col items-center justify-center text-center">
+        <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+          <Icon name="Activity" size={32} className="text-muted-foreground" />
         </div>
+        <p className="text-sm text-muted-foreground font-medium">Timeline Data Unavailable</p>
+        <p className="text-xs text-muted-foreground mt-1">Resolution trends will appear here once issues are tracked</p>
       </div>
     );
   }

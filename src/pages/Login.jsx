@@ -22,9 +22,8 @@ const Login = () => {
   // Redirect if already logged in
   React.useEffect(() => {
     if (user) {
-      // Get user role from metadata or profile and redirect accordingly
-      const userRole = user?.user_metadata?.role;
-      if (userRole === 'admin' || userRole === 'department_manager') {
+      const userRole = user.role;
+      if (['admin', 'super_admin', 'department_head', 'department_manager'].includes(userRole)) {
         navigate('/admin-dashboard');
       } else {
         navigate('/citizen-dashboard');
@@ -84,9 +83,8 @@ const Login = () => {
           setAuthError(error?.message || t('signinError'));
         }
       } else if (data?.user) {
-        // Redirect based on user role
-        const userRole = data?.user?.user_metadata?.role;
-        if (userRole === 'admin' || userRole === 'department_manager') {
+        const userRole = data.user.role;
+        if (['admin', 'super_admin', 'department_head', 'department_manager'].includes(userRole)) {
           navigate('/admin-dashboard');
         } else {
           navigate('/citizen-dashboard');

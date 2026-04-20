@@ -168,20 +168,22 @@ export const useCivicIssues = (filters = {}) => {
 
     if (issues?.length > 0) {
       subscription = civicIssueService?.subscribeToIssueChanges((payload) => {
-        const { eventType, new: newRecord, old: oldRecord } = payload;
+        if (!payload) return;
+
+        // Node backend emits different event names or payloads
+        // Assuming payload is the actual issue object or has a standard structure
+        const issueId = payload.id || payload._id;
 
         setIssues(prev => {
-          switch (eventType) {
-            case 'INSERT':
-              return [newRecord, ...prev];
-            case 'UPDATE':
-              return prev?.map(issue =>
-                issue?.id === newRecord?.id ? { ...issue, ...newRecord } : issue
-              );
-            case 'DELETE':
-              return prev?.filter(issue => issue?.id !== oldRecord?.id);
-            default:
-              return prev;
+          // If the issue already exists, update it, otherwise add it
+          const exists = prev?.some(i => (i.id || i._id) === issueId);
+          
+          if (exists) {
+            return prev?.map(issue =>
+              (issue?.id || issue?._id) === issueId ? { ...issue, ...payload } : issue
+            );
+          } else {
+            return [payload, ...(prev || [])];
           }
         });
 
