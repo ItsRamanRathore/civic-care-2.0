@@ -38,29 +38,33 @@ const { connectRedis } = require('./utils/redis');
 let store;
 
 const setupSessionStore = async () => {
-  const redisClient = await connectRedis();
-  
-  if (redisClient) {
-    console.log('🔄 Initializing Redis session store...');
-    const { RedisStore } = require('connect-redis');
+  try {
+    const redisClient = await connectRedis();
     
-    store = new RedisStore({
-      client: redisClient,
-      prefix: "civic_care:",
-    });
-  } else {
-    console.log('📊 Initializing MongoDB session store...');
-    store = new MongoDBStore({
-      uri: process.env.MONGODB_URI,
-      collection: 'sessions',
-      expires: 1000 * 60 * 60 * 24 * 7, // 1 week
-    });
-  }
+    if (redisClient) {
+      console.log('🔄 Initializing Redis session store...');
+      const { RedisStore } = require('connect-redis');
+      
+      store = new RedisStore({
+        client: redisClient,
+        prefix: "civic_care:",
+      });
+    } else {
+      console.log('📊 Initializing MongoDB session store...');
+      store = new MongoDBStore({
+        uri: process.env.MONGODB_URI,
+        collection: 'sessions',
+        expires: 1000 * 60 * 60 * 24 * 7, // 1 week
+      });
+    }
 
-  if (store.on) {
-    store.on('error', function(error) {
-      console.error('Session Store Error:', error);
-    });
+    if (store.on) {
+      store.on('error', function(error) {
+        console.error('Session Store Error:', error);
+      });
+    }
+  } catch (err) {
+    console.error('Core Session Store Initialization Error:', err);
   }
 };
 
@@ -190,13 +194,9 @@ if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
 
 // Global error handling for unhandled rejections
 process.on('unhandledRejection', (err) => {
-  console.log('UNHANDLED REJECTION! 💥 Shutting down...');
-  console.error(err);
-  process.exit(1);
+  console.error('UNHANDLED REJECTION! Serverless function logged error:', err);
 });
 
 process.on('uncaughtException', (err) => {
-  console.log('UNCAUGHT EXCEPTION! 💥 Shutting down...');
-  console.error(err);
-  process.exit(1);
+  console.error('UNCAUGHT EXCEPTION! Serverless function logged error:', err);
 });
