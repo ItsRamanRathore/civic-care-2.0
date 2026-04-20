@@ -18,7 +18,10 @@ const Pagination = ({
     const range = [];
     const rangeWithDots = [];
 
-    for (let i = Math.max(2, currentPage - delta); i <= Math.min(totalPages - 1, currentPage + delta); i++) {
+    const safeTotalPages = Number.isFinite(totalPages) ? totalPages : 1;
+    const safeCurrentPage = Number.isFinite(currentPage) ? currentPage : 1;
+
+    for (let i = Math.max(2, safeCurrentPage - delta); i <= Math.min(safeTotalPages - 1, safeCurrentPage + delta); i++) {
       range?.push(i);
     }
 

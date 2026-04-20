@@ -61,7 +61,7 @@ const IssueReportingForm = () => {
       setFormData(prev => ({
         ...prev,
         contactInfo: {
-          name: user?.user_metadata?.full_name || user?.email?.split('@')?.[0] || '',
+          name: user?.full_name || user?.email?.split('@')?.[0] || '',
           email: user?.email || '',
           phone: user?.phone || ''
         }

@@ -1,16 +1,21 @@
 import React from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
+import Icon from '../../../components/AppIcon';
 
 const IssuesByCategoryChart = ({ data, loading = false }) => {
   // Color palette for categories
   const colors = ['#0D1B2A', '#415A77', '#778DA9', '#E0E1DD', '#E63946', '#F1FAEE', '#2A9D8F', '#E76F51'];
   
   // Process real data or use fallback
-  const chartData = data && data.length > 0 ?
-    data.map((item, index) => ({
-      name: item.name,
-      value: item.value,
-      percentage: item.percentage,
+  const filteredData = (data || [])
+    ?.filter(item => item && Number(item.value) > 0)
+    ?.map(item => ({ ...item, value: Number(item.value) })) || [];
+  
+  const chartData = filteredData.length > 0 ?
+    filteredData.map((item, index) => ({
+      name: item.name || 'Unknown',
+      value: item.value || 0,
+      percentage: item.percentage || 0,
       color: colors[index % colors.length]
     })) : [
       { name: 'No Data Available', value: 1, color: '#E0E1DD' }
@@ -52,13 +57,14 @@ const IssuesByCategoryChart = ({ data, loading = false }) => {
     );
   };
 
-  if (loading) {
+  if (filteredData.length === 0) {
     return (
-      <div className="h-80 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
-          <p className="text-sm text-muted-foreground">Loading chart data...</p>
+      <div className="h-80 flex flex-col items-center justify-center text-center">
+        <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
+          <Icon name="PieChart" size={32} className="text-muted-foreground" />
         </div>
+        <p className="text-sm text-muted-foreground font-medium">No Data Recorded Yet</p>
+        <p className="text-xs text-muted-foreground mt-1">Submit issues to see category analytics</p>
       </div>
     );
   }

@@ -89,7 +89,8 @@ const DataTable = ({ data, loading = false, onExport, realTime = false }) => {
     return filteredAndSortedData?.slice(startIndex, startIndex + itemsPerPage);
   }, [filteredAndSortedData, currentPage]);
 
-  const totalPages = Math.ceil(filteredAndSortedData?.length / itemsPerPage);
+  const totalItems = filteredAndSortedData?.length || 0;
+  const totalPages = Math.max(1, Math.ceil(totalItems / itemsPerPage) || 1);
 
   const handleSort = (field) => {
     if (sortField === field) {
@@ -230,7 +231,9 @@ const DataTable = ({ data, loading = false, onExport, realTime = false }) => {
                   </span>
                 </td>
                 <td className="px-4 py-3 text-sm text-muted-foreground">
-                  {item.reportedDate ? new Date(item.reportedDate)?.toLocaleDateString() : '-'}
+                  {item.reportedDate && !isNaN(new Date(item.reportedDate).getTime()) 
+                    ? new Date(item.reportedDate).toLocaleDateString() 
+                    : '-'}
                 </td>
                 <td className="px-4 py-3 text-sm text-muted-foreground">
                   {item?.resolutionTime ? `${item?.resolutionTime} days` : '-'}
@@ -260,7 +263,7 @@ const DataTable = ({ data, loading = false, onExport, realTime = false }) => {
             </Button>
             
             <div className="flex items-center space-x-1">
-              {[...Array(Math.min(5, totalPages))]?.map((_, i) => {
+              {[...Array(isNaN(totalPages) || totalPages < 0 ? 0 : Math.min(5, totalPages))].map((_, i) => {
                 const page = i + 1;
                 return (
                   <Button

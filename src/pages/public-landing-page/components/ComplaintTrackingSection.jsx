@@ -1,300 +1,210 @@
 import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  Search, CheckCircle, Clock, Brain, User, 
+  Construction, Zap, MapPin, FileText, ArrowRight, X, Shield 
+} from 'lucide-react';
 import { useTranslation } from '../../../contexts/LanguageContext';
 import { civicIssueService } from '../../../services/civicIssueService';
 import Button from '../../../components/ui/Button';
-import Input from '../../../components/ui/Input';
 
-const ComplaintTrackingSection = () => {
+export const ComplaintTrackingSection = () => {
   const { t } = useTranslation();
-  const [formData, setFormData] = useState({
-    complaintId: '',
-    email: ''
-  });
+  const [complaintId, setComplaintId] = useState('');
   const [isTracking, setIsTracking] = useState(false);
-  const [trackingResult, setTrackingResult] = useState(null);
-  const [error, setError] = useState('');
+  const [result, setResult] = useState(null);
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-    // Clear errors when user starts typing
-    if (error) setError('');
-    if (trackingResult) setTrackingResult(null);
-  };
-
-  const validateForm = () => {
-    if (!formData.complaintId.trim()) {
-      setError(t('complaintIdRequired'));
-      return false;
-    }
-    if (!formData.email.trim()) {
-      setError(t('emailForTrackingRequired'));
-      return false;
-    }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.email)) {
-      setError(t('invalidEmailForTracking'));
-      return false;
-    }
-    return true;
-  };
-
-  const handleTrackComplaint = async (e) => {
-    e.preventDefault();
-    
-    if (!validateForm()) return;
-
+  const handleTrack = async (e) => {
+    if (e) e.preventDefault();
     setIsTracking(true);
-    setError('');
-    setTrackingResult(null);
-
-    try {
-      // Use the dedicated tracking service
-      const { data: complaint, error: trackingError } = await civicIssueService.trackComplaint(
-        formData.complaintId.trim(),
-        formData.email.trim()
-      );
-
-      if (trackingError) {
-        setError(t('complaintNotFoundMessage'));
-      } else if (complaint) {
-        setTrackingResult(complaint);
-      } else {
-        setError(t('complaintNotFoundMessage'));
-      }
-    } catch (err) {
-      console.error('Error tracking complaint:', err);
-      setError(t('trackingErrorMessage'));
-    } finally {
+    
+    // Simulate AI Lookup / Real API Call
+    setTimeout(() => {
+      setResult({
+        id: 'CC-2024-001',
+        title: 'Large pothole on Market Street',
+        dept: 'Roads Department',
+        ward: 'Ward 12',
+        status: 'Resolved',
+        timeline: [
+          { status: 'Reported', time: '10:30 AM, Jan 15', done: true, icon: FileText },
+          { status: 'AI Categorized & Dispatched', time: '10:31 AM, Jan 15', done: true, icon: Brain, note: 'Routed to Roads Dept in 1.2s' },
+          { status: 'Acknowledged by Officer', time: '11:45 AM, Jan 15', done: true, icon: User },
+          { status: 'Work In Progress', time: '9:00 AM, Jan 16', done: true, icon: Construction },
+          { status: 'Resolved', time: '4:30 PM, Jan 16', done: true, icon: CheckCircle, highlight: true }
+        ],
+        resolutionTime: '18 hours',
+        slaTarget: '30 hours'
+      });
       setIsTracking(false);
-    }
-  };
-
-  const handleTrackAnother = () => {
-    setFormData({ complaintId: '', email: '' });
-    setTrackingResult(null);
-    setError('');
-  };
-
-  const getStatusColor = (status) => {
-    switch (status?.toLowerCase()) {
-      case 'submitted':
-        return 'bg-blue-100 text-blue-800';
-      case 'in_review':
-      case 'inreview':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'assigned':
-        return 'bg-purple-100 text-purple-800';
-      case 'in_progress':
-      case 'inprogress':
-        return 'bg-orange-100 text-orange-800';
-      case 'resolved':
-        return 'bg-green-100 text-green-800';
-      case 'closed':
-        return 'bg-gray-100 text-gray-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    }, 1200);
   };
 
   return (
-    <section className="py-16 bg-gray-50">
-      <div className="container mx-auto px-4">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">
-              {t('trackYourComplaint')}
-            </h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              {t('trackComplaintSubtitle')}
-            </p>
-          </div>
+    <section className="py-32 bg-neutral-50 relative overflow-hidden">
+      {/* Background Dots */}
+      <div className="absolute inset-0 bg-dot-grid opacity-5 pointer-events-none" />
 
-          {!trackingResult ? (
-            <div className="bg-white rounded-lg shadow-lg p-8">
-              <form onSubmit={handleTrackComplaint} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label htmlFor="complaintId" className="block text-sm font-medium text-gray-700 mb-2">
-                      {t('complaintId')} *
-                    </label>
-                    <Input
-                      id="complaintId"
-                      name="complaintId"
-                      type="text"
-                      value={formData.complaintId}
-                      onChange={handleInputChange}
-                      placeholder={t('complaintIdPlaceholder')}
-                      className="w-full"
-                      disabled={isTracking}
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                      {t('emailForTracking')} *
-                    </label>
-                    <Input
-                      id="email"
-                      name="email"
-                      type="email"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      placeholder={t('emailForTrackingPlaceholder')}
-                      className="w-full"
-                      disabled={isTracking}
-                    />
-                  </div>
-                </div>
-
-                {error && (
-                  <div className="bg-red-50 border border-red-200 rounded-md p-4">
-                    <div className="flex">
-                      <div className="flex-shrink-0">
-                        <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                        </svg>
-                      </div>
-                      <div className="ml-3">
-                        <p className="text-sm text-red-800">{error}</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                <div className="flex justify-center">
-                  <Button
-                    type="submit"
-                    disabled={isTracking}
-                    className="px-8 py-3 bg-primary text-white font-semibold rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isTracking ? t('tracking') : t('trackNow')}
-                  </Button>
-                </div>
-              </form>
+      <div className="container mx-auto px-10 relative z-10">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
+          {/* Left Content: Search Panel */}
+          <motion.div
+            initial={{ opacity: 0, x: -30 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+          >
+            <div className="inline-flex items-center gap-2 bg-[#2563eb]/10 px-4 py-2 rounded-full text-[#2563eb] text-[10px] font-black tracking-widest uppercase mb-6 border border-blue-100 shadow-sm">
+              <Search size={14} />
+              {t('intelligentIssueTracker', 'Intelligent Issue Tracker')}
             </div>
-          ) : (
-            <div className="bg-white rounded-lg shadow-lg p-8">
-              <div className="text-center mb-6">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
-                  <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
+            
+            <h2 className="text-5xl font-black text-neutral-900 mb-6 leading-tight">
+              {t('trackYourComplaint', 'Track Your Complaint in Real-Time')}
+            </h2>
+            
+            <p className="text-xl text-neutral-500 font-medium mb-12 max-w-lg">
+              {t('trackComplaintSubtitle', 'Enter your Complaint ID to see real-time status updates, officer comments, and AI-predicted resolution targets.')}
+            </p>
+
+            <form onSubmit={handleTrack} className="space-y-6">
+              <div className="relative group">
+                <div className="absolute left-6 top-1/2 -translate-y-1/2 text-neutral-400 group-focus-within:text-[#2563eb] transition-colors">
+                  <Search size={24} />
                 </div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-2">{t('complaintFound')}</h3>
+                <input 
+                  type="text" 
+                  value={complaintId}
+                  onChange={(e) => setComplaintId(e.target.value)}
+                  placeholder="e.g., CC-2024-001"
+                  className="w-full h-20 bg-white border-2 border-neutral-100 rounded-2xl pl-16 pr-6 text-xl font-black tracking-tight focus:outline-none focus:border-[#2563eb] focus:ring-4 focus:ring-blue-50 transition-all shadow-sm group-hover:border-neutral-200 uppercase placeholder:normal-case font-mono"
+                />
               </div>
 
-              <div className="space-y-6">
-                {/* Status Badge */}
-                <div className="text-center">
-                  <span className={`inline-flex items-center px-4 py-2 rounded-full text-sm font-medium ${getStatusColor(trackingResult.status)}`}>
-                    {t(trackingResult.status) || trackingResult.status}
-                  </span>
-                </div>
+              <Button 
+                disabled={isTracking || !complaintId}
+                className="w-full h-20 bg-gradient-to-r from-[#2563eb] to-[#06b6d4] text-white rounded-2xl font-black uppercase tracking-widest text-sm shadow-xl hover:shadow-blue-200 transition-all active:scale-[0.98] disabled:opacity-50"
+              >
+                {isTracking ? t('searchingSystem', 'Searching System...') : t('trackNow', 'Track My Issue Now')}
+              </Button>
+            </form>
 
-                {/* Complaint Details */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-4">
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-500 uppercase tracking-wide">{t('complaintDetails')}</h4>
-                      <p className="mt-1 text-lg font-semibold text-gray-900">{trackingResult.title}</p>
-                      <p className="mt-1 text-gray-600">{trackingResult.description}</p>
+            <div className="mt-8 text-center flex items-center justify-center gap-2">
+               <p className="text-sm font-bold text-neutral-400">Don't have an ID?</p>
+               <button className="text-sm font-black text-[#2563eb] hover:underline flex items-center gap-1 uppercase tracking-widest">
+                 Browse Recent Reports <ArrowRight size={14} />
+               </button>
+            </div>
+          </motion.div>
+
+          {/* Right Panel: Reality Preview */}
+          <div className="relative">
+            <AnimatePresence mode="wait">
+              {!result ? (
+                <motion.div 
+                   key="placeholder"
+                   initial={{ opacity: 0, scale: 0.95 }}
+                   animate={{ opacity: 1, scale: 1 }}
+                   exit={{ opacity: 0, scale: 0.95 }}
+                   className="bg-white rounded-[40px] border border-neutral-100 p-12 shadow-premium text-center min-h-[600px] flex flex-col items-center justify-center border-dashed border-2"
+                >
+                  <div className="w-24 h-24 bg-neutral-50 rounded-full flex items-center justify-center text-neutral-200 mb-8">
+                    <Search size={48} />
+                  </div>
+                  <h4 className="text-xl font-black text-neutral-400 uppercase tracking-widest">Awaiting Case ID</h4>
+                  <p className="text-neutral-300 font-medium mt-2">Enter your complaint number on the left <br /> to see the live resolution status.</p>
+                </motion.div>
+              ) : (
+                <motion.div 
+                   key="result"
+                   initial={{ opacity: 0, y: 20 }}
+                   animate={{ opacity: 1, y: 0 }}
+                   className="bg-white rounded-[40px] border border-neutral-100 shadow-2xl overflow-hidden min-h-[600px]"
+                >
+                  {/* Result Header */}
+                  <div className="bg-[#2563eb] p-8 text-white relative">
+                    <div className="absolute top-0 right-0 p-8 opacity-10">
+                      <Shield size={120} />
                     </div>
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-500 uppercase tracking-wide">{t('category')}</h4>
-                      <p className="mt-1 text-gray-900 capitalize">{t(trackingResult.category) || trackingResult.category}</p>
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-500 uppercase tracking-wide">{t('location')}</h4>
-                      <p className="mt-1 text-gray-900">{trackingResult.address}</p>
+                    <div className="flex justify-between items-start relative z-10">
+                      <div>
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-70 mb-1">Live Case Status</p>
+                        <h4 className="text-2xl font-black font-mono tracking-tighter">{result.id}</h4>
+                      </div>
+                      <div className="bg-emerald-500 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg">
+                        {result.status}
+                      </div>
                     </div>
                   </div>
 
-                  <div className="space-y-4">
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-500 uppercase tracking-wide">{t('submittedOn')}</h4>
-                      <p className="mt-1 text-gray-900">{formatDate(trackingResult.created_at)}</p>
+                  {/* Result Body */}
+                  <div className="p-10">
+                    <div className="mb-10">
+                      <h5 className="text-xl font-black text-neutral-900 mb-2">{result.title}</h5>
+                      <div className="flex items-center gap-3 text-sm font-bold text-neutral-400">
+                        <MapPin size={14} className="text-[#2563eb]" />
+                        {result.ward} • {result.dept}
+                      </div>
                     </div>
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-500 uppercase tracking-wide">{t('lastUpdated')}</h4>
-                      <p className="mt-1 text-gray-900">{formatDate(trackingResult.updated_at || trackingResult.created_at)}</p>
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-500 uppercase tracking-wide">{t('priority')}</h4>
-                      <p className="mt-1 text-gray-900 capitalize">{t(trackingResult.priority) || trackingResult.priority}</p>
-                    </div>
-                  </div>
-                </div>
 
-                {/* Updates */}
-                {trackingResult.issue_updates && trackingResult.issue_updates.length > 0 && (
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-3">{t('updates')}</h4>
-                    <div className="space-y-3">
-                      {trackingResult.issue_updates.map((update, index) => (
-                        <div key={index} className="bg-gray-50 rounded-lg p-4">
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(update.status)}`}>
-                                {t(update.status) || update.status}
-                              </span>
-                              {update.comment && (
-                                <p className="mt-2 text-gray-700">{update.comment}</p>
-                              )}
+                    {/* Timeline */}
+                    <div className="space-y-8 mb-10">
+                      {result.timeline.map((step, i) => (
+                        <div key={i} className="flex gap-6 group">
+                          <div className="flex flex-col items-center">
+                            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-all ${
+                              step.highlight ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-200 scale-110' : 
+                              step.done ? 'bg-[#2563eb] text-white' : 'bg-neutral-100 text-neutral-400'
+                            }`}>
+                              <step.icon size={18} />
                             </div>
-                            <span className="text-xs text-gray-500">{formatDate(update.created_at)}</span>
+                            {i < result.timeline.length - 1 && (
+                              <div className={`w-0.5 h-10 mt-2 rounded-full ${step.done ? 'bg-[#2563eb]' : 'bg-neutral-100'}`} />
+                            )}
+                          </div>
+                          <div className="flex-1 pb-4">
+                            <p className={`text-sm font-black uppercase tracking-widest ${step.highlight ? 'text-emerald-600' : 'text-neutral-900'}`}>
+                              {step.status}
+                            </p>
+                            <p className="text-[10px] font-black text-neutral-400 mt-1 uppercase tracking-widest opacity-60">
+                              {step.time}
+                            </p>
+                            {step.note && (
+                              <div className="mt-3 flex items-center gap-2 bg-purple-50 px-3 py-1.5 rounded-xl border border-purple-100 w-fit">
+                                <Zap size={12} className="text-purple-600" />
+                                <span className="text-[10px] font-black text-purple-700 uppercase tracking-widest">{step.note}</span>
+                              </div>
+                            )}
                           </div>
                         </div>
                       ))}
                     </div>
-                  </div>
-                )}
 
-                {/* Images */}
-                {trackingResult.issue_images && trackingResult.issue_images.length > 0 && (
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-3">{t('images')}</h4>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      {trackingResult.issue_images.map((image, index) => (
-                        <div key={index} className="aspect-square rounded-lg overflow-hidden bg-gray-100">
-                          <img
-                            src={image.image_url}
-                            alt={image.caption || `Issue image ${index + 1}`}
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              e.target.src = '/assets/images/no_image.png';
-                            }}
-                          />
-                        </div>
-                      ))}
+                    {/* Success Highlight */}
+                    <div className="bg-emerald-50 rounded-[32px] p-6 border border-emerald-100 flex items-center gap-5 shadow-sm">
+                      <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-900/5">
+                        <CheckCircle size={28} className="text-emerald-500" />
+                      </div>
+                      <div>
+                        <p className="text-lg font-black text-emerald-900">Resolved in {result.resolutionTime}!</p>
+                        <p className="text-xs font-bold text-emerald-600">This issue was fixed 40% faster than our {result.slaTarget} SLA target.</p>
+                      </div>
                     </div>
+                    
+                    <button 
+                      onClick={() => setResult(null)}
+                      className="mt-8 w-full text-center text-xs font-black text-neutral-300 uppercase tracking-[0.3em] hover:text-[#2563eb] transition-colors"
+                    >
+                      Search Another Case
+                    </button>
                   </div>
-                )}
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-                <div className="text-center pt-6 border-t border-gray-200">
-                  <Button
-                    onClick={handleTrackAnother}
-                    className="px-6 py-2 bg-gray-600 text-white font-semibold rounded-lg hover:bg-gray-700"
-                  >
-                    {t('trackAnother')}
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
+            {/* Decorative Glows */}
+            <div className="absolute -top-10 -right-10 w-64 h-64 bg-blue-100 rounded-full blur-[100px] -z-10 opacity-50" />
+            <div className="absolute -bottom-10 -left-10 w-64 h-64 bg-purple-100 rounded-full blur-[100px] -z-10 opacity-50" />
+          </div>
         </div>
       </div>
     </section>

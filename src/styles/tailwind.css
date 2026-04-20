@@ -9,52 +9,41 @@
 
 @layer base {
   :root {
-    /* Core Colors */
-    --color-background: #FFFFFF; /* white */
-    --color-foreground: #212529; /* gray-800 */
-    --color-border: #E9ECEF; /* gray-200 */
-    --color-input: #FFFFFF; /* white */
-    --color-ring: #0D1B2A; /* navy-900 */
+    /* Premium Palette - Trust & Authority */
+    --primary-deep-blue: #1e3a8a;
+    --primary-blue: #2563eb;
+    --primary-light: #dbeafe;
     
-    /* Card Colors */
-    --color-card: #FFFFFF; /* white */
-    --color-card-foreground: #212529; /* gray-800 */
-    --color-popover: #FFFFFF; /* white */
-    --color-popover-foreground: #212529; /* gray-800 */
+    --secondary-emerald: #059669;
+    --secondary-amber: #f59e0b;
+    --secondary-red: #dc2626;
+
+    /* Neutral Palette - Readability */
+    --neutral-900: #111827;
+    --neutral-700: #374151;
+    --neutral-400: #9ca3af;
+    --neutral-100: #f3f4f6;
+    --white: #ffffff;
+
+    /* Accent Colors - Intelligence & Innovation */
+    --accent-purple: #7c3aed;
+    --accent-cyan: #06b6d4;
+    --accent-orange: #ea580c;
+
+    /* Legacy Compatibility Overlays */
+    --color-background: var(--white);
+    --color-foreground: var(--neutral-900);
+    --color-border: var(--neutral-100);
+    --color-primary: var(--primary-deep-blue);
+    --color-secondary: var(--primary-blue);
+    --color-accent: var(--accent-purple);
+    --color-success: var(--secondary-emerald);
+    --color-warning: var(--secondary-amber);
+    --color-error: var(--secondary-red);
     
-    /* Muted Colors */
-    --color-muted: #F8F9FA; /* gray-50 */
-    --color-muted-foreground: #6C757D; /* gray-500 */
-    
-    /* Primary Colors */
-    --color-primary: #0D1B2A; /* navy-900 */
-    --color-primary-foreground: #FFFFFF; /* white */
-    
-    /* Secondary Colors */
-    --color-secondary: #415A77; /* slate-600 */
-    --color-secondary-foreground: #FFFFFF; /* white */
-    
-    /* Accent Colors */
-    --color-accent: #E63946; /* red-500 */
-    --color-accent-foreground: #FFFFFF; /* white */
-    
-    /* State Colors */
-    --color-destructive: #DC3545; /* red-600 */
-    --color-destructive-foreground: #FFFFFF; /* white */
-    --color-success: #28A745; /* green-600 */
-    --color-success-foreground: #FFFFFF; /* white */
-    --color-warning: #FFC107; /* yellow-400 */
-    --color-warning-foreground: #212529; /* gray-800 */
-    --color-error: #DC3545; /* red-600 */
-    --color-error-foreground: #FFFFFF; /* white */
-    
-    /* Text Colors */
-    --color-text-primary: #212529; /* gray-800 */
-    --color-text-secondary: #6C757D; /* gray-500 */
-    
-    /* Surface Colors */
-    --color-surface: #F8F9FA; /* gray-50 */
-    --color-surface-foreground: #212529; /* gray-800 */
+    /* Premium Shadows */
+    --shadow-premium: 0 10px 15px -3px rgba(30, 58, 138, 0.1), 0 4px 6px -2px rgba(30, 58, 138, 0.05);
+    --shadow-glow: 0 0 40px rgba(37, 99, 235, 0.15);
   }
 
   * {
@@ -64,6 +53,20 @@
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
+    scroll-behavior: smooth;
+  }
+
+  /* Premium Background Patterns */
+  .bg-dot-grid {
+    background-image: radial-gradient(var(--neutral-400) 1px, transparent 1px);
+    background-size: 30px 30px;
+    opacity: 0.1;
+  }
+
+  .section-divider {
+    background: linear-gradient(to right, transparent, var(--neutral-100), transparent);
+    height: 1px;
+    width: 100%;
   }
 
   h1, h2, h3, h4, h5, h6 {

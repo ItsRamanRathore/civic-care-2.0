@@ -68,7 +68,13 @@ const DateRangeSelector = ({ onDateRangeChange, className = "" }) => {
 
   const formatDateRange = () => {
     if (selectedRange === 'custom' && customRange?.startDate && customRange?.endDate) {
-      return `${new Date(customRange.startDate)?.toLocaleDateString()} - ${new Date(customRange.endDate)?.toLocaleDateString()}`;
+      const start = new Date(customRange.startDate);
+      const end = new Date(customRange.endDate);
+      
+      const startStr = !isNaN(start.getTime()) ? start.toLocaleDateString() : 'Invalid';
+      const endStr = !isNaN(end.getTime()) ? end.toLocaleDateString() : 'Invalid';
+      
+      return `${startStr} - ${endStr}`;
     }
     
     const selected = predefinedRanges?.find(r => r?.value === selectedRange);
