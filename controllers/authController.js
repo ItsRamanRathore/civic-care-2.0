@@ -24,7 +24,7 @@ const generateRefreshToken = async (user, ipAddress) => {
   return refreshToken;
 };
 
-const otplib = require('otplib');
+const speakeasy = require('speakeasy');
 const qrcode = require('qrcode');
 const AlertService = require('../services/alertService');
 
@@ -119,11 +119,10 @@ exports.setupMFA = async (req, res) => {
     const user = await User.findById(req.user.id);
     if (user.mfa_enabled) return res.status(400).json({ message: 'MFA already enabled' });
 
-    const secret = otplib.authenticator.generateSecret();
-    const otpauth = otplib.authenticator.keyuri(user.email, 'Civic Care', secret);
-    const qrCodeUrl = await qrcode.toDataURL(otpauth);
+    const secret = speakeasy.generateSecret({ name: `Civic Care (${user.email})` });
+    const qrCodeUrl = await qrcode.toDataURL(secret.otpauth_url);
 
-    user.mfa_secret = secret;
+    user.mfa_secret = secret.base32;
     await user.save();
 
     res.status(200).json({ status: 'success', qrCodeUrl, secret });
@@ -146,7 +145,11 @@ exports.verifyMFA = async (req, res) => {
     }
 
     const user = await User.findById(userId).select('+mfa_secret');
-    const isValid = otplib.authenticator.verify({ token, secret: user.mfa_secret });
+    const isValid = speakeasy.totp.verify({ 
+      secret: user.mfa_secret, 
+      encoding: 'base32',
+      token 
+    });
 
     if (!isValid) return res.status(400).json({ message: 'Invalid TOTP token' });
 
