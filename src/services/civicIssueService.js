@@ -73,7 +73,7 @@ export const civicIssueService = {
   // Get civic issues for a specific user
   async getCivicIssuesByUser(userId) {
     try {
-      const response = await apiClient.get('/issues', { params: { reporter_id: userId } });
+      const response = await apiClient.get(`/issues?reporter_id=${userId}`);
       return response.data.data;
     } catch (error) {
       console.error('Error fetching user civic issues:', error);

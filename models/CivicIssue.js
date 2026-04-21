@@ -98,6 +98,12 @@ const civicIssueSchema = new mongoose.Schema({
       type: [Number],
       default: [0, 0]
     }
+  },
+  custom_id: {
+    type: String,
+    unique: true,
+    sparse: true,
+    index: true
   }
 }, {
   timestamps: true,
@@ -109,14 +115,34 @@ civicIssueSchema.index({ status: 1, createdAt: -1 });
 civicIssueSchema.index({ category: 1, priority: 1 });
 civicIssueSchema.index({ title: 'text', description: 'text' });
 
-// Sync location_geojson with latitude/longitude
-civicIssueSchema.pre('save', async function() {
+// Sync location_geojson with latitude/longitude & Generate Friendly ID
+civicIssueSchema.pre('save', async function(next) {
+  // 1. Generate Friendly ID if it doesn't exist
+  if (!this.custom_id) {
+    try {
+      const year = new Date().getFullYear();
+      const count = await this.constructor.countDocuments({ 
+        createdAt: { 
+          $gte: new Date(year, 0, 1), 
+          $lt: new Date(year + 1, 0, 1) 
+        } 
+      });
+      this.custom_id = `CC-${year}-${(count + 1).toString().padStart(3, '0')}`;
+    } catch (err) {
+      console.error('Error generating friendly ID:', err);
+      // Fallback or unique random if count fails
+      this.custom_id = `CC-${Date.now().toString().slice(-8)}`;
+    }
+  }
+
+  // 2. Geospatial Sync
   if (this.latitude !== null && this.longitude !== null) {
     this.location_geojson = {
       type: 'Point',
       coordinates: [this.longitude, this.latitude] // Mongo uses [lng, lat]
     };
   }
+  next();
 });
 
 // To match Supabase's virtual or calculated fields if needed

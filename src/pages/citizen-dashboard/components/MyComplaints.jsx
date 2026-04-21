@@ -23,6 +23,7 @@ const MyComplaints = () => {
   }, [user]);
 
   const fetchComplaints = async () => {
+    if (!user?.id) return;
     try {
       setLoading(true);
       const userComplaints = await getCivicIssuesByUser(user.id);

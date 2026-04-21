@@ -19,7 +19,38 @@ const CitizenDashboard = () => {
     location.pathname.includes('community') ? 'community' : 
     location.pathname.includes('settings') ? 'settings' : 'personal'
   );
-  // ... stats state omitted for brevity
+  const [stats, setStats] = useState({ total: 0, resolved: 0, inProgress: 0, reputation: 740 });
+  
+  const dashboardMetrics = [
+    { 
+      title: t('totalIssues', 'Total Issues'), 
+      value: stats.total, 
+      icon: 'FileText', 
+      change: stats.total > 0 ? `+${stats.total}` : '0', 
+      changeType: 'neutral' 
+    },
+    { 
+      title: t('resolved', 'Resolved'), 
+      value: stats.resolved, 
+      icon: 'CheckCircle', 
+      change: stats.total > 0 ? `${Math.round((stats.resolved / stats.total) * 100)}%` : '0%', 
+      changeType: 'positive' 
+    },
+    { 
+      title: t('inProgress', 'In Progress'), 
+      value: stats.inProgress, 
+      icon: 'Clock', 
+      change: 'Active', 
+      changeType: 'warning' 
+    },
+    { 
+      title: t('reputation', 'Reputation'), 
+      value: stats.reputation, 
+      icon: 'Award', 
+      change: 'Top 5%', 
+      changeType: 'positive' 
+    }
+  ];
 
   const tabs = [
     { id: 'personal', label: t('myComplaints'), path: '/citizen-dashboard/my-complaints', icon: 'User' },
@@ -27,7 +58,24 @@ const CitizenDashboard = () => {
     { id: 'settings', label: 'Preferences', path: '/citizen-dashboard/settings', icon: 'Settings' }
   ];
 
-  // ... useEffect omitted for brevity
+  useEffect(() => {
+    const fetchUserStats = async () => {
+      if (!user?.id) return;
+      try {
+        const data = await civicIssueService.getCivicIssuesByUser(user.id);
+        if (data) {
+          const total = data.length;
+          const resolved = data.filter(i => i.status === 'resolved').length;
+          const inProgress = data.filter(i => ['assigned', 'in_progress', 'in_review'].includes(i.status)).length;
+          setStats(prev => ({ ...prev, total, resolved, inProgress }));
+        }
+      } catch (err) {
+        console.error('Failed to fetch citizen stats:', err);
+      }
+    };
+
+    fetchUserStats();
+  }, [user]);
 
   return (
     <div className="min-h-screen bg-gray-50/50">
