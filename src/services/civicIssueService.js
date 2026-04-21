@@ -5,7 +5,7 @@ export const civicIssueService = {
   async getIssues(filters = {}) {
     try {
       const response = await apiClient.get('/issues', { params: filters });
-      const normalizedData = (response.data.data || []).map(issue => this._normalizeIssue(issue));
+      const normalizedData = (response.data.data || []).map(issue => civicIssueService._normalizeIssue(issue));
       return { data: normalizedData, error: null };
     } catch (error) {
       console.error('Error fetching civic issues:', error);
@@ -17,7 +17,7 @@ export const civicIssueService = {
   async getIssueById(id) {
     try {
       const response = await apiClient.get(`/issues/${id}`);
-      return { data: this._normalizeIssue(response.data.data), error: null };
+      return { data: civicIssueService._normalizeIssue(response.data.data), error: null };
     } catch (error) {
       console.error('Error fetching issue:', error);
       return { data: null, error: error.response?.data?.message || error.message };
@@ -83,7 +83,7 @@ export const civicIssueService = {
 
   // Backward compatibility wrapper
   async getAllCivicIssues() {
-    return this.getIssues();
+    return civicIssueService.getIssues();
   },
 
   // Create a new civic issue

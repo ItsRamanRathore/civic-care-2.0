@@ -1,39 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { motion, useScroll, useTransform } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { TrendingUp, ArrowDown, Users, CheckCircle, BarChart3, Clock } from 'lucide-react';
 import landingService from '../../../services/landingService';
+import RechartsSparkline from './RechartsSparkline';
 
-const MiniSparkline = ({ data, color }) => {
-  const max = Math.max(...data);
-  const min = Math.min(...data);
-  const range = max - min || 1;
-
-  const points = data.map((value, index) => {
-    const x = (index / (data.length - 1)) * 100;
-    const y = 100 - ((value - min) / range) * 100;
-    return `${x},${y}`;
-  }).join(' ');
-
-  return (
-    <div className="w-full h-12 mt-6 opacity-30 hover:opacity-100 transition-opacity">
-      <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-        <motion.polyline
-          points={points}
-          fill="none"
-          stroke={color}
-          strokeWidth="6"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          initial={{ pathLength: 0 }}
-          animate={{ pathLength: 1 }}
-          transition={{ duration: 2, ease: "easeInOut" }}
-        />
-      </svg>
-    </div>
-  );
-};
-
-export const PremiumStats = () => {
+const PremiumStats = () => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -46,7 +17,7 @@ export const PremiumStats = () => {
     fetchStats();
   }, []);
 
-  const StatItem = ({ value, label, trend, trendDir, suffix = '', delay = 0, icon: Icon, colorClass, sparkData, color }) => {
+  const StatItem = ({ value, label, trend, trendDir, suffix = '', delay = 0, icon: Icon, color, colorClass, sparkData, gradientId }) => {
     const [displayValue, setDisplayValue] = useState(0);
 
     useEffect(() => {
@@ -58,9 +29,7 @@ export const PremiumStats = () => {
           return;
         }
         
-        let totalMiliseconds = 2000;
         let timer = setInterval(() => {
-          start += 1;
           setDisplayValue(prev => {
              if (prev >= end) {
                clearInterval(timer);
@@ -80,22 +49,31 @@ export const PremiumStats = () => {
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
         transition={{ duration: 0.8, delay }}
-        className="flex flex-col items-center text-center p-8 bg-white/50 backdrop-blur-sm rounded-[32px] border border-transparent hover:border-neutral-100 transition-all hover:shadow-2xl group"
+        className="flex flex-col items-center text-center p-8 bg-white/40 backdrop-blur-md rounded-[40px] border border-white/20 hover:border-neutral-200 transition-all duration-500 hover:shadow-[0_20px_50px_rgba(0,0,0,0.05)] group relative overflow-hidden"
       >
-        <div className={`p-5 rounded-[24px] ${colorClass} mb-8 transition-transform group-hover:scale-110 shadow-lg`}>
-          <Icon size={32} />
-        </div>
-        <div className="text-4xl font-black text-neutral-900 mb-2 tracking-tight">
-          {displayValue.toLocaleString()}{suffix}
-        </div>
-        <div className="text-[10px] font-black text-neutral-400 uppercase tracking-[0.2em] mb-6">{label}</div>
-        
-        {/* SVG Sparkline */}
-        {sparkData && <MiniSparkline data={sparkData} color={color} />}
+        {/* Subtle background glow on hover */}
+        <div 
+          className="absolute inset-0 opacity-0 group-hover:opacity-10 pointer-events-none transition-opacity duration-500"
+          style={{ background: `radial-gradient(circle at center, ${color}, transparent 70%)` }}
+        />
 
-        <div className={`mt-6 inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[10px] font-black tracking-widest uppercase ${
+        <div className={`p-6 rounded-[28px] ${colorClass} mb-8 transition-all duration-500 group-hover:scale-110 group-hover:rotate-3 shadow-xl relative z-10`}>
+          <Icon size={36} />
+        </div>
+        
+        <div className="relative z-10">
+          <div className="text-5xl font-black text-neutral-900 mb-2 tracking-tight">
+            {displayValue.toLocaleString()}{suffix}
+          </div>
+          <div className="text-[11px] font-black text-neutral-400 uppercase tracking-[0.25em] mb-4">{label}</div>
+        </div>
+        
+        {/* Recharts Area Chart */}
+        {sparkData && <RechartsSparkline data={sparkData} color={color} gradientId={gradientId} />}
+
+        <div className={`mt-8 inline-flex items-center gap-2 px-5 py-2 rounded-full text-[10px] font-black tracking-widest uppercase relative z-10 shadow-sm ${
           trendDir === 'up' ? 'bg-emerald-50 text-emerald-700' : 
-          trendDir === 'down' ? 'bg-emerald-50 text-emerald-700' : 'bg-blue-50 text-blue-700'
+          trendDir === 'down' ? 'bg-orange-50 text-orange-700' : 'bg-indigo-50 text-indigo-700'
         }`}>
           {trendDir === 'up' ? <TrendingUp size={14} /> : trendDir === 'down' ? <ArrowDown size={14} /> : null}
           {trend}
@@ -107,69 +85,95 @@ export const PremiumStats = () => {
   if (loading) return (
     <div className="py-20 bg-white">
       <div className="container mx-auto px-10">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 bg-white rounded-[40px] border border-neutral-100 shadow-premium p-12 animate-pulse">
-           {[1,2,3,4].map(i => <div key={i} className="h-64 bg-neutral-50 rounded-3xl" />)}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 p-12">
+           {[1,2,3,4].map(i => (
+             <div key={i} className="h-80 bg-neutral-50/50 rounded-[40px] border border-neutral-100 animate-pulse relative overflow-hidden">
+               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full animate-[shimmer_2s_infinite]" />
+             </div>
+           ))}
         </div>
       </div>
     </div>
   );
 
   return (
-    <div className="py-32 bg-white relative z-20">
-      <div className="container mx-auto px-10">
-        {/* Section Label */}
-        <div className="text-center mb-20 animate-fade-in">
-           <span className="text-[10px] font-black text-neutral-400 uppercase tracking-[0.4em] mb-4 block">Platform Performance</span>
-           <h3 className="text-3xl font-black text-neutral-900">Real-Time Impact Metrics</h3>
+    <div className="py-32 bg-white relative z-20 overflow-hidden">
+      {/* Decorative background elements */}
+      <div className="absolute top-0 right-0 w-1/3 h-1/3 bg-indigo-50/30 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2" />
+      <div className="absolute bottom-0 left-0 w-1/3 h-1/3 bg-purple-50/30 rounded-full blur-[120px] translate-y-1/2 -translate-x-1/2" />
+
+      <div className="container mx-auto px-10 relative z-10">
+        <div className="text-center mb-24">
+           <motion.span 
+             initial={{ opacity: 0, y: 10 }}
+             whileInView={{ opacity: 1, y: 0 }}
+             viewport={{ once: true }}
+             className="text-[11px] font-black text-indigo-500 uppercase tracking-[0.5em] mb-6 block"
+           >
+             Platform Intelligence
+           </motion.span>
+           <motion.h3 
+             initial={{ opacity: 0, y: 20 }}
+             whileInView={{ opacity: 1, y: 0 }}
+             viewport={{ once: true }}
+             transition={{ delay: 0.1 }}
+             className="text-5xl font-black text-neutral-900 tracking-tight"
+           >
+             Real-Time Impact Metrics
+           </motion.h3>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
           <StatItem 
             icon={BarChart3}
-            color="#2563eb"
-            colorClass="bg-blue-50 text-[#2563eb]"
+            color="#6366f1"
+            colorClass="bg-indigo-50 text-indigo-600"
             value={stats.totalIssues}
             label="Total Issues Reported"
-            trend="+12% this month"
+            trend="+12.4% this month"
             trendDir="up"
             delay={0.1}
-            sparkData={[65, 70, 75, 80, 88, 92, 100]}
+            sparkData={[65, 78, 72, 85, 88, 95, 100]}
+            gradientId="gradIssues"
           />
 
           <StatItem 
             icon={CheckCircle}
-            color="#059669"
-            colorClass="bg-emerald-50 text-[#059669]"
+            color="#14b8a6"
+            colorClass="bg-teal-50 text-teal-600"
             value={stats.resolutionRate}
             suffix="%"
-            label="Resolution Rate"
-            trend="72% Overall Avg"
+            label="Resolution Efficiency"
+            trend="92.1% SLA Compliance"
             delay={0.2}
-            sparkData={[55, 60, 62, 65, 68, 70, 72]}
+            sparkData={[60, 62, 68, 65, 70, 75, 72]}
+            gradientId="gradResolution"
           />
 
           <StatItem 
             icon={Clock}
-            color="#ea580c"
-            colorClass="bg-orange-50 text-[#ea580c]"
+            color="#f97316"
+            colorClass="bg-orange-50 text-orange-600"
             value={stats.avgResponseTime}
             suffix="hrs"
-            label="Avg. Response Time"
-            trend="40% faster than SLA"
+            label="Avg. Response Analytics"
+            trend="4.2hrs Faster vs 2023"
             trendDir="down"
             delay={0.3}
-            sparkData={[100, 90, 85, 75, 65, 60, 52]}
+            sparkData={[100, 95, 88, 82, 70, 65, 52]}
+            gradientId="gradTime"
           />
 
           <StatItem 
             icon={Users}
-            color="#7c3aed"
-            colorClass="bg-purple-50 text-[#7c3aed]"
+            color="#a855f7"
+            colorClass="bg-purple-50 text-purple-600"
             value={stats.activeCitizens}
-            label="Active Citizens"
-            trend="Growing Daily"
+            label="Verified Civic Users"
+            trend="Growth Index: 1.4x"
             delay={0.4}
-            sparkData={[60, 65, 70, 78, 85, 92, 100]}
+            sparkData={[50, 65, 60, 78, 82, 95, 100]}
+            gradientId="gradUsers"
           />
         </div>
       </div>
