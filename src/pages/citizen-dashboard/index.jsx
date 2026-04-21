@@ -21,6 +21,7 @@ const CitizenDashboard = () => {
   );
   const [stats, setStats] = useState({ total: 0, resolved: 0, inProgress: 0, reputation: 740 });
   
+  // Early return if user is null (e.g. during logout)
   const dashboardMetrics = [
     { 
       title: t('totalIssues', 'Total Issues'), 

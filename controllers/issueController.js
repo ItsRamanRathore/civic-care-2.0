@@ -139,10 +139,24 @@ exports.createIssue = async (req, res) => {
       ]
     });
 
+    // Explicitly cast coordinates to Number (multipart/form-data sends strings)
+    // Using a safer check to ensure '0' is not treated as falsy/null
+    const lat = (latitude !== undefined && latitude !== null && latitude !== '') ? Number(latitude) : null;
+    const lng = (longitude !== undefined && longitude !== null && longitude !== '') ? Number(longitude) : null;
+
+    if (latitude && isNaN(lat)) {
+      return res.status(400).json({ status: 'fail', message: 'Invalid latitude format' });
+    }
+    if (longitude && isNaN(lng)) {
+      return res.status(400).json({ status: 'fail', message: 'Invalid longitude format' });
+    }
+
     const issueData = {
       ...req.body,
-      reporter_id: req.user.id,
+      reporter_id: req.user?.id,
       category: category || aiResult.category,
+      latitude: lat,
+      longitude: lng,
       priority: scoringResult.tier,
       priority_score: scoringResult.score,
       sla_deadline: slaDeadline,
@@ -462,6 +476,18 @@ exports.getAnalytics = async (req, res) => {
   } catch (error) {
     console.error('❌ Advanced Analytics Error:', error);
     res.status(500).json({ message: 'Internal Server Error', error: error.message });
+  }
+};
+
+exports.analyzeIssue = async (req, res) => {
+  try {
+    const { description } = req.body;
+    if (!description) return res.status(400).json({ status: 'fail', message: 'Description is required' });
+
+    const analysis = await aiService.analyzeIssue(description);
+    res.status(200).json({ status: 'success', data: analysis });
+  } catch (err) {
+    res.status(400).json({ status: 'fail', message: err.message });
   }
 };
 

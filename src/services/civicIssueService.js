@@ -290,9 +290,20 @@ export const civicIssueService = {
     if (socket) {
       socket.disconnect();
     }
+  },
+
+  async analyzeIssue(description) {
+    try {
+      const response = await apiClient.post('/issues/analyze', { description });
+      return { data: response.data.data, error: null };
+    } catch (error) {
+      console.error('AI Analysis failed:', error);
+      return { data: null, error: error.response?.data?.message || 'AI service currently unavailable' };
+    }
   }
 };
 
 // Exporting individual functions for backward compatibility with old imports
 export const getAllCivicIssues = civicIssueService.getAllCivicIssues;
 export const getCivicIssuesByUser = civicIssueService.getCivicIssuesByUser;
+export const analyzeIssue = civicIssueService.analyzeIssue;

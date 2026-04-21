@@ -11,6 +11,7 @@ const router = express.Router();
 router.get('/', issueController.getAllIssues);
 router.get('/stats/analytics', issueController.getAnalytics);
 router.get('/:id', issueController.getIssue);
+router.post('/analyze', issueController.analyzeIssue);
 
 // Protected routes
 router.use(protect);

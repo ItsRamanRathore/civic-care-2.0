@@ -19,13 +19,15 @@ import { useTranslation } from '../../contexts/LanguageContext';
 const IssueReportingForm = () => {
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
-  const { createIssue } = useCivicIssues();
+  const { createIssue, analyzeIssue } = useCivicIssues();
   const { showToast } = useToast();
   const { t } = useTranslation();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDraftSaving, setIsDraftSaving] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [submitError, setSubmitError] = useState('');
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [aiSuggestion, setAiSuggestion] = useState(null);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -94,8 +96,9 @@ const IssueReportingForm = () => {
             ...prev,
             location: {
               ...prev.location,
-              coordinates: { lat: latitude, lng: longitude }
-              // Don't auto-fill address - let user enter it manually
+              coordinates: { lat: latitude, lng: longitude },
+              // Smart auto-fill: if address is empty, provide a descriptive placeholder
+              address: prev.location.address || `GPS Captured: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
             }
           }));
           
@@ -108,12 +111,11 @@ const IssueReportingForm = () => {
         (error) => {
           console.warn('❌ GPS location capture failed:', error.message);
           setIsCapturingLocation(false);
-          // Don't show alert, just silently fail - user can manually set location
         },
         { 
           enableHighAccuracy: true, 
-          timeout: 10000, 
-          maximumAge: 300000 // 5 minutes cache
+          timeout: 15000, // Increased timeout to 15s
+          maximumAge: 300000 
         }
       );
     };
@@ -123,6 +125,48 @@ const IssueReportingForm = () => {
     
     return () => clearTimeout(timer);
   }, []); // Only run once when component mounts
+
+  // Real-time AI Analysis
+  useEffect(() => {
+    if (formData.description.length < 20) {
+      setAiSuggestion(null);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setIsAnalyzing(true);
+      try {
+        // Set a 10s timeout for the request
+        const analysisPromise = analyzeIssue(formData.description);
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 10000));
+        
+        const { data, error } = await Promise.race([analysisPromise, timeoutPromise]);
+        
+        if (data) {
+          setAiSuggestion(data);
+          // Auto-fill category if not already selected
+          if (!formData?.category || formData?.category === 'other') {
+            handleInputChange('category', data?.category);
+          }
+          
+          // Auto-select priority if still default
+          if (formData.priority === 'medium' && data.priority !== 'medium') {
+             handleInputChange('priority', data.priority);
+          }
+        } else if (error) {
+           console.warn('AI Analysis failed:', error);
+           setAiSuggestion(null);
+        }
+      } catch (err) {
+        console.warn('AI Analysis skipped or failed:', err.message);
+        setAiSuggestion(null);
+      } finally {
+        setIsAnalyzing(false);
+      }
+    }, 1500); // 1.5s debounce
+
+    return () => clearTimeout(timer);
+  }, [formData.description, analyzeIssue]);
 
   // Calculate form progress
   const getFormProgress = () => {
@@ -336,32 +380,42 @@ const IssueReportingForm = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-[#f8fafc] text-[#1e293b]">
       <Header />
-      <div className="container mx-auto px-4 py-6">
-        <Breadcrumb />
+      
+      {/* Premium Hero Section */}
+      <div className="bg-primary text-white py-12 mb-8 relative overflow-hidden">
+        <div className="absolute inset-0 bg-dot-grid opacity-20"></div>
+        <div className="absolute -bottom-24 -right-24 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
+        <div className="absolute -top-12 -left-12 w-48 h-48 bg-accent/20 rounded-full blur-2xl"></div>
+        
+        <div className="container mx-auto px-4 relative z-10">
+          <div className="max-w-3xl">
+            <h1 className="text-4xl md:text-5xl font-bold mb-4 tracking-tight">
+              Report a Civic Issue
+            </h1>
+            <p className="text-lg text-blue-100 max-w-xl leading-relaxed">
+              Help us build a better city. Report problems in your neighborhood and track their resolution in real-time.
+            </p>
+          </div>
+        </div>
+      </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <div className="container mx-auto px-4 pb-12">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Main Form */}
           <div className="lg:col-span-3">
-            <div className="bg-card border border-border rounded-lg">
-              {/* Form Header */}
-              <div className="border-b border-border p-6">
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-                    <Icon name="Plus" size={20} color="white" />
-                  </div>
-                  <div>
-                    <h1 className="text-2xl font-bold text-text-primary">{t('reportAnIssue')}</h1>
-                    <p className="text-sm text-muted-foreground">
-                      {t('reportAnIssueSubtitle')}
-                    </p>
-                  </div>
-                </div>
+            <div className="bg-white rounded-2xl shadow-premium border border-slate-200 overflow-hidden">
+              {/* Form Progress Visual */}
+              <div className="h-1.5 w-full bg-slate-100">
+                <div 
+                  className="h-full bg-primary transition-all duration-500 ease-out"
+                  style={{ width: `${progress.percentage}%` }}
+                ></div>
               </div>
 
               {/* Form Content */}
-              <form onSubmit={handleSubmit} className="p-6 space-y-8">
+              <form onSubmit={handleSubmit} className="p-8 space-y-10">
                 {/* GPS Location Capture Notice */}
                 {isCapturingLocation && (
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -429,18 +483,22 @@ const IssueReportingForm = () => {
                 )}
 
                 {/* Category Selection */}
-                <CategorySelector
-                  value={formData?.category}
-                  onChange={(value) => handleInputChange('category', value)}
-                  error={errors?.category}
-                />
+                <div className="space-y-6">
+                  <CategorySelector
+                    value={formData?.category}
+                    onChange={(value) => handleInputChange('category', value)}
+                    error={errors?.category}
+                  />
+                </div>
 
                 {/* Issue Title */}
-                <div className="space-y-2">
+                <div className="space-y-4">
                   <div className="flex items-center space-x-2">
-                    <Icon name="FileText" size={18} className="text-primary" />
-                    <h3 className="text-sm font-medium text-text-primary">{t('issueTitle')}</h3>
-                    <span className="text-accent">*</span>
+                    <div className="p-2 bg-blue-50 rounded-lg">
+                       <Icon name="FileText" size={20} className="text-primary" />
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-800">{t('issueTitle')}</h3>
+                    <span className="text-destructive font-bold">*</span>
                   </div>
                   <Input
                     type="text"
@@ -449,6 +507,7 @@ const IssueReportingForm = () => {
                     onChange={(e) => handleInputChange('title', e?.target?.value)}
                     error={errors?.title}
                     required
+                    className="h-12 text-lg focus:ring-primary/20"
                     description={t('issueTitleDescription')}
                   />
                 </div>
@@ -456,9 +515,11 @@ const IssueReportingForm = () => {
                 {/* Issue Description */}
                 <div className="space-y-4">
                   <div className="flex items-center space-x-2">
-                    <Icon name="AlignLeft" size={18} className="text-primary" />
-                    <h3 className="text-sm font-medium text-text-primary">{t('issueDescription')}</h3>
-                    <span className="text-accent">*</span>
+                    <div className="p-2 bg-blue-50 rounded-lg">
+                      <Icon name="AlignLeft" size={20} className="text-primary" />
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-800">{t('issueDescription')}</h3>
+                    <span className="text-destructive font-bold">*</span>
                   </div>
   
                   <div className="space-y-3">
@@ -480,6 +541,41 @@ const IssueReportingForm = () => {
                       isActive={isVoiceActive}
                       onToggle={setIsVoiceActive}
                     />
+
+                    {/* AI Suggestions Box */}
+                    {(isAnalyzing || aiSuggestion) && (
+                      <div className={`p-4 rounded-lg border transition-all ${isAnalyzing ? 'bg-gray-50 border-gray-200 animate-pulse' : 'bg-primary/5 border-primary/20'}`}>
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <Icon name="Cpu" size={16} className={isAnalyzing ? 'text-gray-400' : 'text-primary'} />
+                            <span className="text-sm font-semibold">{isAnalyzing ? 'AI is analyzing your report...' : 'Smart Auto-Categorization'}</span>
+                          </div>
+                          {!isAnalyzing && aiSuggestion?.confidence > 0.8 && (
+                            <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">High Confidence</span>
+                          )}
+                        </div>
+                        
+                        {!isAnalyzing && aiSuggestion && (
+                          <div className="space-y-2">
+                            <p className="text-xs text-muted-foreground leading-relaxed">
+                              {aiSuggestion.reasoning}
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                              <div className="flex items-center gap-1.5 bg-white border border-border px-2.5 py-1 rounded-md text-[11px] font-medium">
+                                <span className="text-muted-foreground">Category:</span>
+                                <span className="text-primary font-bold">{aiSuggestion.category.charAt(0).toUpperCase() + aiSuggestion.category.slice(1)}</span>
+                              </div>
+                              <div className="flex items-center gap-1.5 bg-white border border-border px-2.5 py-1 rounded-md text-[11px] font-medium">
+                                <span className="text-muted-foreground">Priority:</span>
+                                <span className={`font-bold ${aiSuggestion.priority === 'critical' ? 'text-red-600' : aiSuggestion.priority === 'high' ? 'text-orange-600' : 'text-primary'}`}>
+                                  {aiSuggestion.priority.charAt(0).toUpperCase() + aiSuggestion.priority.slice(1)}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -497,10 +593,12 @@ const IssueReportingForm = () => {
                 />
 
                 {/* Priority Selection */}
-                <div className="space-y-2">
+                <div className="space-y-4">
                   <div className="flex items-center space-x-2">
-                    <Icon name="AlertTriangle" size={18} className="text-primary" />
-                    <h3 className="text-sm font-medium text-text-primary">{t('priorityLevel')}</h3>
+                    <div className="p-2 bg-blue-50 rounded-lg">
+                      <Icon name="AlertTriangle" size={20} className="text-primary" />
+                    </div>
+                    <h3 className="text-lg font-bold text-slate-800">{t('priorityLevel')}</h3>
                   </div>
                   <div className="grid grid-cols-3 gap-3">
                     {[
@@ -526,11 +624,13 @@ const IssueReportingForm = () => {
 
                 {/* Contact Information - Only show if not authenticated */}
                 {!isAuthenticated && (
-                  <div className="space-y-4">
+                  <div className="space-y-6 pt-10 border-t border-slate-100">
                     <div className="flex items-center space-x-2">
-                      <Icon name="User" size={18} className="text-primary" />
-                      <h3 className="text-sm font-medium text-text-primary">{t('contactInformation')}</h3>
-                      <span className="text-accent">*</span>
+                       <div className="p-2 bg-blue-50 rounded-lg">
+                        <Icon name="User" size={20} className="text-primary" />
+                      </div>
+                      <h3 className="text-lg font-bold text-slate-800">{t('contactInformation')}</h3>
+                      <span className="text-destructive font-bold">*</span>
                     </div>
   
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -568,15 +668,16 @@ const IssueReportingForm = () => {
                 )}
 
                 {/* Form Actions */}
-                <div className="flex flex-col sm:flex-row gap-3 pt-6 border-t border-border">
+                <div className="flex flex-col sm:flex-row gap-4 pt-10 border-t border-slate-100">
                   <Button
                     type="submit"
                     loading={isSubmitting}
                     disabled={progress?.percentage < 100}
                     iconName="Send"
                     iconPosition="left"
-                    iconSize={16}
-                    className="flex-1 sm:flex-none"
+                    variant="primary"
+                    size="xl"
+                    className="flex-1 shadow-lg shadow-primary/20"
                   >
                     {isSubmitting ? t('submittingReport') : t('submitReport')}
                   </Button>
@@ -584,11 +685,11 @@ const IssueReportingForm = () => {
                   <Button
                     type="button"
                     variant="outline"
+                    size="xl"
                     onClick={handleSaveDraft}
                     loading={isDraftSaving}
                     iconName="Save"
-                    iconPosition="left"
-                    iconSize={16}
+                    className="flex-1 md:flex-none"
                   >
                     {isDraftSaving ? t('savingDraft') : t('saveDraft')}
                   </Button>
@@ -596,10 +697,10 @@ const IssueReportingForm = () => {
                   <Button
                     type="button"
                     variant="ghost"
+                    size="xl"
                     onClick={() => navigate('/public-landing-page')}
                     iconName="X"
-                    iconPosition="left"
-                    iconSize={16}
+                    className="flex-1 md:flex-none uppercase text-xs font-bold tracking-widest text-slate-400 hover:text-slate-600"
                   >
                     {t('cancel')}
                   </Button>
