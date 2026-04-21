@@ -15,9 +15,11 @@ import Signup from '@/pages/Signup';
 import CitizenDashboard from '@/pages/citizen-dashboard';
 import MyComplaints from '@/pages/citizen-dashboard/components/MyComplaints';
 import CommunityComplaints from '@/pages/citizen-dashboard/components/CommunityComplaints';
+import UserPreferences from '@/pages/citizen-dashboard/components/UserPreferences';
 import StudentDashboard from '@/pages/student-dashboard';
 import CitizenDashboardNew from '@/pages/student-dashboard';
 import ModernLandingPage from '@/pages/public-landing-page/ModernLandingPage';
+import DepartmentDashboard from '@/pages/department-dashboard';
 import FAQPage from '@/components/chatbot/FAQPage';
 import ChatbotWidget from '@/components/chatbot/ChatbotWidget';
 import { AuthProvider } from '@/contexts/AuthContext';
@@ -49,8 +51,16 @@ const Routes = () => {
             <Route 
               path="/admin-dashboard" 
               element={
-                <ProtectedRoute allowedRoles={['admin', 'super_admin', 'department_head', 'department_manager']}>
+                <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
                   <AdminDashboard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/department-dashboard" 
+              element={
+                <ProtectedRoute allowedRoles={['department_head', 'department_manager']}>
+                  <DepartmentDashboard />
                 </ProtectedRoute>
               } 
             />
@@ -68,10 +78,14 @@ const Routes = () => {
               path="/citizen-dashboard" 
               element={
                 <ProtectedRoute>
-                  <CitizenDashboardNew />
+                  <CitizenDashboard />
                 </ProtectedRoute>
               } 
-            />
+            >
+              <Route index element={<MyComplaints />} />
+              <Route path="community" element={<CommunityComplaints />} />
+              <Route path="settings" element={<UserPreferences />} />
+            </Route>
 
             {/* Help & Support Routes */}
             <Route path="/faq" element={<FAQPage />} />
