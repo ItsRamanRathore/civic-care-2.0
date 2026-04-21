@@ -14,7 +14,7 @@ import { departmentService } from '../../services/departmentService';
 import AIOversight from './components/AIOversight';
 
 const AdminDashboard = () => {
-  const { user, userProfile } = useAuth();
+  const { user } = useAuth();
   const [filters, setFilters] = useState({
     status: '',
     priority: '',

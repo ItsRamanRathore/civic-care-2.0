@@ -23,6 +23,7 @@ import ChatbotWidget from '@/components/chatbot/ChatbotWidget';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { LanguageProvider } from '@/contexts/LanguageContext';
 import { ToastProvider } from '@/components/ui/Toast';
+import ProtectedRoute from '@/components/ProtectedRoute';
 
 const Routes = () => {
   return (
@@ -44,12 +45,33 @@ const Routes = () => {
             {/* Form Routes */}
             <Route path="/issue-reporting-form" element={<IssueReportingForm />} />
             
-            {/* Dashboard Routes - Accessible in preview mode */}
-            <Route path="/admin-dashboard" element={<AdminDashboard />} />
-            <Route path="/analytics-dashboard" element={<AnalyticsDashboard />} />
+            {/* Dashboard Routes - Protected */}
+            <Route 
+              path="/admin-dashboard" 
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'super_admin', 'department_head', 'department_manager']}>
+                  <AdminDashboard />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/analytics-dashboard" 
+              element={
+                <ProtectedRoute allowedRoles={['admin', 'super_admin', 'department_head', 'department_manager']}>
+                  <AnalyticsDashboard />
+                </ProtectedRoute>
+              } 
+            />
             
-            {/* Citizen Dashboard Route */}
-            <Route path="/citizen-dashboard" element={<CitizenDashboardNew />} />
+            {/* Citizen Dashboard Route - Protected */}
+            <Route 
+              path="/citizen-dashboard" 
+              element={
+                <ProtectedRoute>
+                  <CitizenDashboardNew />
+                </ProtectedRoute>
+              } 
+            />
 
             {/* Help & Support Routes */}
             <Route path="/faq" element={<FAQPage />} />

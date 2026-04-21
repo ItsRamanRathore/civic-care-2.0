@@ -1,7 +1,4 @@
-const { GoogleGenerativeAI } = require("@google/generative-ai");
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
-
+const axios = require("axios");
 const CATEGORIES = ['roads', 'sanitation', 'utilities', 'infrastructure', 'safety', 'environment', 'other'];
 const PRIORITIES = ['low', 'medium', 'high', 'critical'];
 
@@ -17,8 +14,9 @@ exports.analyzeIssue = async (description) => {
   }
 
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-
+    const apiKey = process.env.GEMINI_API_KEY;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`;
+    
     const prompt = `
       As an expert civic issue management AI, analyze the following citizen complaint:
       "${description}"
@@ -34,13 +32,29 @@ exports.analyzeIssue = async (description) => {
       }
     `;
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
+    const payload = {
+      contents: [{ parts: [{ text: prompt }] }]
+    };
+
+    const response = await axios.post(url, payload, {
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+    const candidates = response.data?.candidates;
+    if (!candidates || candidates.length === 0) {
+      throw new Error("No candidates returned from AI");
+    }
+
+    const text = candidates[0].content.parts[0].text;
     
-    // Clean JSON response (handle potential markdown blocks)
-    const jsonStr = text.replace(/```json|```/g, "").trim();
-    const analysis = JSON.parse(jsonStr);
+    // Robust JSON Extraction (handles thoughts, markdown, etc)
+    const jsonMatches = text.match(/\{[\s\S]*\}/g);
+    if (!jsonMatches || jsonMatches.length === 0) {
+      throw new Error("No JSON found in AI response");
+    }
+    
+    const lastMatch = jsonMatches[jsonMatches.length - 1];
+    const analysis = JSON.parse(lastMatch);
 
     // Validate category and priority
     if (!CATEGORIES.includes(analysis.category)) analysis.category = 'other';
@@ -53,7 +67,7 @@ exports.analyzeIssue = async (description) => {
       confidence: 1
     };
   } catch (error) {
-    console.error("❌ AI Analysis Error:", error);
+    console.error("❌ AI Analysis Error:", error.response ? JSON.stringify(error.response.data) : error.message);
     return { category: 'other', priority: 'medium', confidence: 0 };
   }
 };

@@ -162,6 +162,17 @@ export const useCivicIssues = (filters = {}) => {
     }
   }, []);
 
+  // AI analysis of issue description
+  const analyzeIssue = useCallback(async (description) => {
+    try {
+      const { data, error: analysisError } = await civicIssueService?.analyzeIssue(description);
+      if (analysisError) return { success: false, error: analysisError };
+      return { success: true, data };
+    } catch (err) {
+      return { success: false, error: err?.message };
+    }
+  }, []);
+
   // Real-time subscription
   useEffect(() => {
     let subscription;
@@ -215,6 +226,7 @@ export const useCivicIssues = (filters = {}) => {
     updateIssueStatus,
     voteOnIssue,
     addIssueUpdate,
+    analyzeIssue,
     clearError: () => setError(null)
   };
 };

@@ -14,6 +14,7 @@ const CitizenDashboard = () => {
   const [activeTab, setActiveTab] = useState('list');
   const [complaints, setComplaints] = useState([]);
   const [loading, setLoading] = useState(true);
+
   const [stats, setStats] = useState({
     total: 0,
     pending: 0,

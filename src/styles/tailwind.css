@@ -34,16 +34,30 @@
     --color-background: var(--white);
     --color-foreground: var(--neutral-900);
     --color-border: var(--neutral-100);
-    --color-primary: var(--primary-deep-blue);
-    --color-secondary: var(--primary-blue);
-    --color-accent: var(--accent-purple);
-    --color-success: var(--secondary-emerald);
-    --color-warning: var(--secondary-amber);
-    --color-error: var(--secondary-red);
     
-    /* Premium Shadows */
+    --color-primary: var(--primary-blue);
+    --color-primary-foreground: var(--white);
+    
+    --color-secondary: var(--primary-deep-blue);
+    --color-secondary-foreground: var(--white);
+    
+    --color-accent: var(--accent-purple);
+    --color-accent-foreground: var(--white);
+    
+    --color-success: var(--secondary-emerald);
+    --color-success-foreground: var(--white);
+    
+    --color-warning: var(--secondary-amber);
+    --color-warning-foreground: var(--neutral-900);
+    
+    --color-error: var(--secondary-red);
+    --color-error-foreground: var(--white);
+    
+    /* Premium Shadows & Gradients */
     --shadow-premium: 0 10px 15px -3px rgba(30, 58, 138, 0.1), 0 4px 6px -2px rgba(30, 58, 138, 0.05);
     --shadow-glow: 0 0 40px rgba(37, 99, 235, 0.15);
+    --gradient-premium: linear-gradient(135deg, var(--primary-deep-blue) 0%, var(--primary-blue) 100%);
+    --gradient-glass: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
   }
 
   * {
