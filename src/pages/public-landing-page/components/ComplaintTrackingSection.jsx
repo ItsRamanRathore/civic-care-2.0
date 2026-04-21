@@ -13,31 +13,101 @@ export const ComplaintTrackingSection = () => {
   const [complaintId, setComplaintId] = useState('');
   const [isTracking, setIsTracking] = useState(false);
   const [result, setResult] = useState(null);
+  const [error, setError] = useState(null);
+
+  const mapIssueToResult = (issue) => {
+    const statusMap = {
+      submitted: { label: 'Reported', icon: FileText },
+      in_review: { label: 'In Review', icon: Clock },
+      assigned: { label: 'Assigned to Officer', icon: User },
+      in_progress: { label: 'Work In Progress', icon: Construction },
+      resolved: { label: 'Resolved', icon: CheckCircle },
+      closed: { label: 'Closed', icon: Shield },
+      rejected: { label: 'Rejected', icon: X }
+    };
+
+    // Construct timeline from updates or just the creation
+    let timeline = [];
+    
+    // Add initial reporting
+    timeline.push({
+      status: 'Reported',
+      time: new Date(issue.createdAt).toLocaleString([], { hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric' }),
+      done: true,
+      icon: FileText
+    });
+
+    // Add updates
+    if (issue.issue_updates && issue.issue_updates.length > 0) {
+      const updates = [...issue.issue_updates].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+      updates.forEach(update => {
+        timeline.push({
+          status: statusMap[update.status]?.label || update.status,
+          time: new Date(update.createdAt).toLocaleString([], { hour: '2-digit', minute: '2-digit', month: 'short', day: 'numeric' }),
+          done: true,
+          icon: statusMap[update.status]?.icon || FileText,
+          note: update.comment
+        });
+      });
+    }
+
+    // Add highlighting for the latest step
+    if (timeline.length > 0) {
+      const lastIdx = timeline.length - 1;
+      timeline[lastIdx].highlight = issue.status === 'resolved';
+      
+      // If it's AI categorized, add a special note to the first/second step
+      if (issue.is_ai_categorized && timeline.length > 1) {
+        timeline[1].note = `AI ${issue.ai_analysis?.automated_tier || 'Categorized'} in seconds`;
+        timeline[1].icon = Brain;
+      }
+    }
+
+    // Calculate resolution time
+    let resolutionTime = '48 hours';
+    if (issue.status === 'resolved' && issue.resolved_at) {
+      const diff = new Date(issue.resolved_at) - new Date(issue.createdAt);
+      const hours = Math.round(diff / (1000 * 60 * 60));
+      resolutionTime = `${hours} hours`;
+    }
+
+    return {
+      id: issue.custom_id || issue._id.toString().toUpperCase().slice(-8),
+      fullId: issue._id,
+      title: issue.title,
+      dept: issue.assigned_department_id?.name || 'Department Pending',
+      ward: issue.address.split(',')[0], // Use first part of address as ward/locality
+      status: statusMap[issue.status]?.label || issue.status,
+      timeline,
+      resolutionTime,
+      slaTarget: '72 hours'
+    };
+  };
 
   const handleTrack = async (e) => {
     if (e) e.preventDefault();
+    if (!complaintId.trim()) return;
+
     setIsTracking(true);
+    setResult(null);
+    setError(null);
     
-    // Simulate AI Lookup / Real API Call
-    setTimeout(() => {
-      setResult({
-        id: 'CC-2024-001',
-        title: 'Large pothole on Market Street',
-        dept: 'Roads Department',
-        ward: 'Ward 12',
-        status: 'Resolved',
-        timeline: [
-          { status: 'Reported', time: '10:30 AM, Jan 15', done: true, icon: FileText },
-          { status: 'AI Categorized & Dispatched', time: '10:31 AM, Jan 15', done: true, icon: Brain, note: 'Routed to Roads Dept in 1.2s' },
-          { status: 'Acknowledged by Officer', time: '11:45 AM, Jan 15', done: true, icon: User },
-          { status: 'Work In Progress', time: '9:00 AM, Jan 16', done: true, icon: Construction },
-          { status: 'Resolved', time: '4:30 PM, Jan 16', done: true, icon: CheckCircle, highlight: true }
-        ],
-        resolutionTime: '18 hours',
-        slaTarget: '30 hours'
-      });
+    try {
+      const { data, error: apiError } = await civicIssueService.getIssueById(complaintId.trim().toLowerCase());
+      
+      if (apiError || !data) {
+        setError(t('issueNotFound', 'Complaint ID not found. Please verify the ID and try again.'));
+        setIsTracking(false);
+        return;
+      }
+
+      setResult(mapIssueToResult(data));
+    } catch (err) {
+      setError(t('systemError', 'Could not connect to the tracking system.'));
+      console.error('Tracking system error:', err);
+    } finally {
       setIsTracking(false);
-    }, 1200);
+    }
   };
 
   return (
@@ -101,17 +171,29 @@ export const ComplaintTrackingSection = () => {
             <AnimatePresence mode="wait">
               {!result ? (
                 <motion.div 
-                   key="placeholder"
+                   key={error ? "error" : "placeholder"}
                    initial={{ opacity: 0, scale: 0.95 }}
                    animate={{ opacity: 1, scale: 1 }}
                    exit={{ opacity: 0, scale: 0.95 }}
-                   className="bg-white rounded-[40px] border border-neutral-100 p-12 shadow-premium text-center min-h-[600px] flex flex-col items-center justify-center border-dashed border-2"
+                   className={`bg-white rounded-[40px] border border-neutral-100 p-12 shadow-premium text-center min-h-[600px] flex flex-col items-center justify-center border-dashed border-2 ${error ? 'border-red-100 bg-red-50/10' : ''}`}
                 >
-                  <div className="w-24 h-24 bg-neutral-50 rounded-full flex items-center justify-center text-neutral-200 mb-8">
-                    <Search size={48} />
+                  <div className={`w-24 h-24 rounded-full flex items-center justify-center mb-8 ${error ? 'bg-red-50 text-red-500' : 'bg-neutral-50 text-neutral-200'}`}>
+                    {error ? <X size={48} /> : <Search size={48} />}
                   </div>
-                  <h4 className="text-xl font-black text-neutral-400 uppercase tracking-widest">Awaiting Case ID</h4>
-                  <p className="text-neutral-300 font-medium mt-2">Enter your complaint number on the left <br /> to see the live resolution status.</p>
+                  <h4 className={`text-xl font-black uppercase tracking-widest ${error ? 'text-red-500' : 'text-neutral-400'}`}>
+                    {error ? t('notFound', 'Case Not Found') : t('awaitingId', 'Awaiting Case ID')}
+                  </h4>
+                  <p className="text-neutral-400 font-medium mt-4 max-w-xs">
+                    {error || t('trackComplaintInstructions', 'Enter your complaint number on the left to see the live resolution status.')}
+                  </p>
+                  {error && (
+                    <button 
+                      onClick={() => { setError(null); setComplaintId(''); }}
+                      className="mt-8 text-xs font-black text-[#2563eb] uppercase tracking-widest hover:underline"
+                    >
+                      Try Again
+                    </button>
+                  )}
                 </motion.div>
               ) : (
                 <motion.div 
@@ -179,16 +261,18 @@ export const ComplaintTrackingSection = () => {
                       ))}
                     </div>
 
-                    {/* Success Highlight */}
-                    <div className="bg-emerald-50 rounded-[32px] p-6 border border-emerald-100 flex items-center gap-5 shadow-sm">
-                      <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-900/5">
-                        <CheckCircle size={28} className="text-emerald-500" />
+                    {/* Success Highlight - Only for Resolved issues */}
+                    {result.status === 'Resolved' && (
+                      <div className="bg-emerald-50 rounded-[32px] p-6 border border-emerald-100 flex items-center gap-5 shadow-sm">
+                        <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-900/5">
+                          <CheckCircle size={28} className="text-emerald-500" />
+                        </div>
+                        <div>
+                          <p className="text-lg font-black text-emerald-900">Resolved in {result.resolutionTime}!</p>
+                          <p className="text-xs font-bold text-emerald-600">This issue was fixed 40% faster than our {result.slaTarget} SLA target.</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-lg font-black text-emerald-900">Resolved in {result.resolutionTime}!</p>
-                        <p className="text-xs font-bold text-emerald-600">This issue was fixed 40% faster than our {result.slaTarget} SLA target.</p>
-                      </div>
-                    </div>
+                    )}
                     
                     <button 
                       onClick={() => setResult(null)}

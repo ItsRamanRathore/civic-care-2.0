@@ -31,6 +31,7 @@ const CitizenDashboard = () => {
   }, [user, navigate]);
 
   const fetchUserComplaints = async () => {
+    if (!user?.id) return;
     try {
       setLoading(true);
       const userComplaints = await civicIssueService.getCivicIssuesByUser(user.id);

@@ -20,11 +20,14 @@ const emitUpdate = (req, event, data) => {
 
 exports.getAllIssues = async (req, res) => {
   try {
-    const { category, status, priority, limit } = req.query;
+    const { category, status, priority, limit, reporter_id } = req.query;
     const filter = {};
     if (category) filter.category = category;
     if (status) filter.status = status;
     if (priority) filter.priority = priority;
+    if (reporter_id && mongoose.Types.ObjectId.isValid(reporter_id)) {
+      filter.reporter_id = new mongoose.Types.ObjectId(reporter_id);
+    }
 
     let query = CivicIssue.find(filter)
       .populate('reporter_id', 'full_name email')
@@ -57,11 +60,18 @@ exports.getAllIssues = async (req, res) => {
 
 exports.getIssue = async (req, res) => {
   try {
-    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-      return res.status(400).json({ message: 'Invalid issue ID' });
+    const { id } = req.params;
+    let query;
+
+    // Check if it's a valid MongoDB ObjectId
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      query = CivicIssue.findById(id);
+    } else {
+      // Otherwise, try searching by the friendly custom_id (case-insensitive)
+      query = CivicIssue.findOne({ custom_id: id.toUpperCase() });
     }
 
-    const issue = await CivicIssue.findById(req.params.id)
+    const issue = await query
       .populate('reporter_id', 'full_name email phone')
       .populate('assigned_department_id')
       .populate('assigned_to', 'full_name');
