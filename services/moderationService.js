@@ -1,9 +1,5 @@
-const OpenAI = require('openai');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 const Comment = require('../models/Comment');
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
 
 // Tier 2: Keyword Blocklist (can be moved to DB later)
 const BLOCKLIST = [
@@ -17,27 +13,43 @@ class ModerationService {
    * @param {string} text - The comment content
    */
   static async checkWithAI(text) {
-    if (!process.env.OPENAI_API_KEY) {
-      console.warn('⚠️ OPENAI_API_KEY missing. AI moderation skipped.');
+    const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
+    if (!apiKey) {
+      console.warn('⚠️ GEMINI_API_KEY missing. AI moderation skipped.');
       return { approved: true, score: 0 };
     }
 
     try {
-      const response = await openai.moderations.create({ input: text });
-      const result = response.results[0];
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
       
-      // Calculate a conservative aggregate score
-      const maxScore = Math.max(...Object.values(result.category_scores));
-      const action = this.determineAction(maxScore, result.flagged);
+      const prompt = `Analyze the following comment for toxicity, spam, or community guideline violations.
+      Respond ONLY with a JSON object containing three fields:
+      "flagged": true or false,
+      "score": a number from 0.0 (perfectly safe) to 1.0 (highly toxic/spam),
+      "categories": an array of strings describing the violation (e.g., ["spam"], ["hate_speech"], or [] if safe).
+      
+      Comment: "${text}"`;
+
+      const result = await model.generateContent(prompt);
+      const responseText = result.response.text();
+      
+      // Parse JSON from response (handling potential markdown formatting)
+      const jsonStr = responseText.replace(/```json/gi, '').replace(/```/g, '').trim();
+      const parsed = JSON.parse(jsonStr);
+      
+      const maxScore = parsed.score || 0;
+      const flagged = parsed.flagged || false;
+      const action = this.determineAction(maxScore, flagged);
 
       return {
-        flagged: result.flagged,
+        flagged: flagged,
         score: maxScore,
-        categories: Object.keys(result.categories).filter(cat => result.categories[cat]),
+        categories: parsed.categories || [],
         action
       };
     } catch (error) {
-      console.error('❌ OpenAI Moderation Error:', error.message);
+      console.error('❌ Gemini Moderation Error:', error.message);
       return { action: 'queue', score: 1, reason: 'AI Error' };
     }
   }
