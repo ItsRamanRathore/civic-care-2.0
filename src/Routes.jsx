@@ -42,6 +42,7 @@ const Routes = () => {
             <Route path="/original-landing" element={<PublicLandingPage />} />
             <Route path="/public-reports-listing" element={<PublicReportsListing />} />
             <Route path="/interactive-issue-map" element={<InteractiveIssueMap />} />
+            <Route path="/analytics-dashboard" element={<AnalyticsDashboard />} />
             <Route path="/issue/:id" element={<IssueDetail />} />
             
             {/* Form Routes */}
@@ -64,14 +65,7 @@ const Routes = () => {
                 </ProtectedRoute>
               } 
             />
-            <Route 
-              path="/analytics-dashboard" 
-              element={
-                <ProtectedRoute allowedRoles={['admin', 'super_admin', 'department_head', 'department_manager']}>
-                  <AnalyticsDashboard />
-                </ProtectedRoute>
-              } 
-            />
+
             
             {/* Citizen Dashboard Route - Protected */}
             <Route 

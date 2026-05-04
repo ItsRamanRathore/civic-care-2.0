@@ -115,7 +115,7 @@ export const ComplaintTrackingSection = () => {
       {/* Background Dots */}
       <div className="absolute inset-0 bg-dot-grid opacity-5 pointer-events-none" />
 
-      <div className="container mx-auto px-10 relative z-10">
+      <div className="container mx-auto px-4 md:px-10 relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
           {/* Left Content: Search Panel */}
           <motion.div

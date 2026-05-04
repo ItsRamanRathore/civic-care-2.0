@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Camera, Play, Shield, Zap, Users, CheckCircle, Sparkles, ChevronDown } from 'lucide-react';
+import { Camera, Download, Shield, Zap, Users, CheckCircle, Sparkles, ChevronDown } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Button from '../../../components/ui/Button';
 import { useTranslation } from '../../../contexts/LanguageContext';
@@ -50,7 +50,7 @@ export const PremiumHero = () => {
         </motion.div>
       </div>
 
-      <div className="container mx-auto px-10 relative z-10 py-32">
+      <div className="container mx-auto px-4 md:px-10 relative z-10 py-32">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
           {/* Left: Content - More breathing room */}
           <motion.div
@@ -64,7 +64,7 @@ export const PremiumHero = () => {
               {t('aiPoweredCivicPlatform', 'AI-Powered Civic Intelligence Platform')}
             </div>
 
-            <h1 className="text-7xl md:text-8xl font-black text-white leading-[1.02] mb-10 tracking-tighter">
+            <h1 className="text-5xl md:text-7xl lg:text-8xl font-black text-white leading-[1.02] mb-10 tracking-tighter">
               {t('yourVoice', 'Your Voice.')}<br />
               <span className="bg-gradient-to-r from-secondary to-accent bg-clip-text text-transparent animate-pulse drop-shadow-md">
                 {t('realAction', 'Real Action.')}
@@ -84,12 +84,12 @@ export const PremiumHero = () => {
                   {t('reportIssue', 'Report Issue Now')}
                 </Button>
               </Link>
-              <Link to="/faq">
+              <a href="/downloads/civic-care.apk" download="CivicCare.apk">
                 <Button variant="outline" size="xl" className="border-2 border-white/50 text-white hover:bg-white/10 px-12 h-20 rounded-2xl font-bold text-sm backdrop-blur-sm transition-all hover:border-white">
-                  <Play className="mr-3" size={22} fill="currentColor" />
-                  {t('watchDemo', 'Watch Demo')}
+                  <Download className="mr-3" size={22} />
+                  {t('downloadApp', 'Download App')}
                 </Button>
-              </Link>
+              </a>
             </div>
 
             {/* Trust Indicators - Upgraded */}
@@ -116,7 +116,7 @@ export const PremiumHero = () => {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 1, delay: 0.2 }}
           >
-            <div className="relative z-10 w-[320px] bg-black rounded-[3rem] border-[12px] border-neutral-900 shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden group">
+            <div className="relative z-10 w-[280px] sm:w-[320px] bg-black rounded-[3rem] border-[12px] border-neutral-900 shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden group">
               
               {/* Dynamic Island Notch */}
               <div className="absolute top-2 left-1/2 -translate-x-1/2 w-24 h-6 bg-black rounded-full z-50 flex items-center justify-between px-2">

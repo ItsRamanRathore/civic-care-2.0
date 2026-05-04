@@ -41,7 +41,11 @@ const createCustomIcon = (category, status) => {
 
 const MapEventHandler = ({ mapCenter, mapZoom, onMapReady }) => {
   const map = useMap();
-  useEffect(() => { if (mapCenter) map.setView([mapCenter.lat, mapCenter.lng], mapZoom); }, [map, mapCenter, mapZoom]);
+  useEffect(() => { 
+    if (mapCenter) {
+      map.flyTo([mapCenter.lat, mapCenter.lng], mapZoom, { duration: 1.5 });
+    }
+  }, [map, mapCenter, mapZoom]);
   useEffect(() => { onMapReady?.(map); }, [map, onMapReady]);
   return null;
 };
@@ -129,7 +133,12 @@ const MapContainer = ({
         {viewMode === 'heat' ? (
           <HeatmapLayer issues={validIssues} />
         ) : (
-          <MarkerClusterGroup chunkedLoading maxClusterRadius={50}>
+          <MarkerClusterGroup 
+            chunkedLoading 
+            maxClusterRadius={30} 
+            disableClusteringAtZoom={13}
+            spiderfyOnMaxZoom={true}
+          >
             {validIssues.map((issue) => (
               <Marker key={issue._id || issue.id} position={[issue.coordinates.lat, issue.coordinates.lng]} icon={createCustomIcon(issue.category, issue.status)} eventHandlers={{ click: () => handleMarkerClick(issue) }}>
                 <Popup>

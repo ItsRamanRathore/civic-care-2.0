@@ -9,6 +9,8 @@ const BadgeService = require('../services/badgeService');
 const DuplicateDetectionService = require('../services/duplicateDetectionService');
 const PriorityScoringService = require('../services/priorityScoringService');
 const RouteOptimizationService = require('../services/routeOptimizationService');
+const EmailService = require('../services/emailService');
+const ModerationService = require('../services/moderationService');
 
 // Helper to emit socket events
 const emitUpdate = (req, event, data) => {
@@ -39,13 +41,14 @@ exports.getAllIssues = async (req, res) => {
 
     // Enhance issues with images and other related data
     const enhancedIssues = await Promise.all(issues.map(async (issue) => {
-      const imagesCount = await IssueImage.countDocuments({ issue_id: issue._id });
+      const images = await IssueImage.find({ issue_id: issue._id });
       const updates = await IssueUpdate.find({ issue_id: issue._id, is_public: true }).sort('-createdAt');
       const votes = await IssueVote.find({ issue_id: issue._id });
       
       return {
         ...issue.toObject(),
-        imageCount: imagesCount,
+        images: images.map(img => img.image_url),
+        imageCount: images.length,
         issue_updates: updates,
         upvoteCount: votes.filter(v => v.vote_type === 'upvote').length,
         importantCount: votes.filter(v => v.vote_type === 'important').length,
@@ -87,6 +90,7 @@ exports.getIssue = async (req, res) => {
       data: {
         ...issue.toObject(),
         issue_images: images,
+        images: images.map(img => img.image_url),
         issue_updates: updates,
         issue_votes: votes,
       }
@@ -316,7 +320,7 @@ exports.addComment = async (req, res) => {
 exports.getComments = async (req, res) => {
   try {
     const { id } = req.params;
-    const comments = await Comment.find({ issue_id: id, is_approved: true })
+    const comments = await Comment.find({ issue_id: id, is_approved: true }).populate('user_id', 'full_name badges');
     res.status(200).json({ status: 'success', data: comments });
   } catch (err) {
     res.status(500).json({ status: 'fail', message: err.message });

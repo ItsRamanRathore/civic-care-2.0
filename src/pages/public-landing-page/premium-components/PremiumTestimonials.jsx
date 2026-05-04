@@ -32,7 +32,7 @@ const PremiumTestimonials = () => {
     <section className="py-32 bg-stone-50 relative overflow-hidden">
       <div className="absolute inset-0 bg-dot-grid opacity-[0.03] pointer-events-none" />
       
-      <div className="container mx-auto px-10 relative z-10">
+      <div className="container mx-auto px-4 md:px-10 relative z-10">
         <div className="text-center mb-20 max-w-2xl mx-auto">
           <div className="inline-flex items-center gap-2 bg-orange-100 px-4 py-2 rounded-full text-orange-600 text-[10px] font-black tracking-widest uppercase mb-6">
             <MessageCircle size={14} />

@@ -179,7 +179,7 @@ const RecentReportsSection = () => {
       {/* Background Decorative */}
       <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-blue-50/50 rounded-full blur-[120px] pointer-events-none" />
 
-      <div className="container mx-auto px-10 relative z-10">
+      <div className="container mx-auto px-4 md:px-10 relative z-10">
         <div className="flex flex-col md:flex-row justify-between items-end gap-8 mb-16">
           <div className="max-w-2xl">
             <div className="inline-flex items-center gap-2 bg-blue-50 px-4 py-2 rounded-full text-[#2563eb] text-[10px] font-black tracking-widest uppercase mb-6">
@@ -211,7 +211,7 @@ const RecentReportsSection = () => {
 
         {/* Floating Background Hint */}
         <div className="mt-24 text-center">
-           <div className="inline-flex items-center gap-12 bg-neutral-50 px-10 py-6 rounded-[32px] border border-neutral-100 shadow-sm">
+           <div className="inline-flex flex-col sm:flex-row items-center gap-6 sm:gap-12 bg-neutral-50 px-6 sm:px-10 py-6 rounded-[32px] border border-neutral-100 shadow-sm w-full md:w-auto">
              <div className="flex items-center gap-4">
                 <Search size={20} className="text-neutral-400" />
                 <span className="text-sm font-bold text-neutral-500">Search 12,847 archived cases</span>

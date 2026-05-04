@@ -19,12 +19,12 @@ const ChartContainer = ({
   };
 
   return (
-    <div className={`bg-card border border-border rounded-lg shadow-card ${className} ${
+    <div className={`bg-white rounded-[32px] md:rounded-[48px] border border-neutral-100 shadow-[0_10px_40px_rgba(0,0,0,0.02)] hover:shadow-[0_30px_70px_rgba(0,0,0,0.06)] transition-all duration-500 ${className} ${
       isFullscreen ? 'fixed inset-4 z-50' : ''
     }`}>
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-border">
-        <div className="flex items-center space-x-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border-b border-border gap-4">
+        <div className="flex items-center space-x-3 w-full sm:w-auto">
           <h3 className="text-lg font-semibold text-card-foreground">{title}</h3>
           {loading && (
             <div className="flex items-center space-x-2 text-muted-foreground">
@@ -39,7 +39,7 @@ const ChartContainer = ({
           )}
         </div>
         
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center justify-end space-x-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
           {controls}
           <Button
             variant="ghost"

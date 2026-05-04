@@ -16,7 +16,7 @@ const MetricsCard = ({ title, value, change, changeType, icon, description, load
 
   if (loading) {
     return (
-      <div className="bg-card border border-border rounded-lg p-6 shadow-card">
+      <div className="bg-white rounded-[40px] border border-neutral-100 p-8 shadow-[0_10px_40px_rgba(0,0,0,0.02)]">
         <div className="animate-pulse">
           <div className="flex items-center justify-between mb-4">
             <div className="w-8 h-8 bg-muted rounded-lg"></div>
@@ -30,10 +30,10 @@ const MetricsCard = ({ title, value, change, changeType, icon, description, load
   }
 
   return (
-    <div className="bg-card border border-border rounded-lg p-6 shadow-card hover:shadow-modal transition-smooth">
-      <div className="flex items-center justify-between mb-4">
-        <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-          <Icon name={icon} size={20} className="text-primary" />
+    <div className="bg-white rounded-[40px] border border-neutral-100 p-8 shadow-[0_10px_40px_rgba(0,0,0,0.02)] hover:shadow-[0_30px_70px_rgba(0,0,0,0.06)] transition-all duration-500">
+      <div className="flex items-center justify-between mb-6">
+        <div className="w-12 h-12 bg-indigo-500/10 rounded-[16px] flex items-center justify-center">
+          <Icon name={icon} size={24} className="text-indigo-600" />
         </div>
         {change && (
           <div className={`flex items-center space-x-1 ${getChangeColor()}`}>

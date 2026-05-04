@@ -84,7 +84,7 @@ const PremiumStats = () => {
 
   if (loading) return (
     <div className="py-20 bg-white">
-      <div className="container mx-auto px-10">
+      <div className="container mx-auto px-4 md:px-10">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 p-12">
            {[1,2,3,4].map(i => (
              <div key={i} className="h-80 bg-neutral-50/50 rounded-[40px] border border-neutral-100 animate-pulse relative overflow-hidden">
@@ -102,7 +102,7 @@ const PremiumStats = () => {
       <div className="absolute top-0 right-0 w-1/3 h-1/3 bg-indigo-50/30 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2" />
       <div className="absolute bottom-0 left-0 w-1/3 h-1/3 bg-purple-50/30 rounded-full blur-[120px] translate-y-1/2 -translate-x-1/2" />
 
-      <div className="container mx-auto px-10 relative z-10">
+      <div className="container mx-auto px-4 md:px-10 relative z-10">
         <div className="text-center mb-24">
            <motion.span 
              initial={{ opacity: 0, y: 10 }}

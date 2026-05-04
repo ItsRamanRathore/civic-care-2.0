@@ -245,8 +245,8 @@ const DataTable = ({ data, loading = false, onExport, realTime = false }) => {
       </div>
       {/* Pagination */}
       <div className="px-4 py-3 border-t border-border">
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-muted-foreground">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="text-sm text-muted-foreground text-center sm:text-left">
             Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredAndSortedData?.length)} of {filteredAndSortedData?.length} results
           </div>
           

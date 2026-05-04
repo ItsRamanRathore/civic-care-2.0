@@ -32,11 +32,21 @@ export const analyticsService = {
           reported: t.reported || 0,
           resolved: t.resolved || 0
         })),
-        departments: performance.map(p => ({
-          name: (p._id || 'Default').charAt(0).toUpperCase() + (p._id || 'default').slice(1),
-          efficiency: Math.max(0, 100 - (p.avgResolutionTime || 0)),
-          avgTime: (p.avgResolutionTime || 0).toFixed(1)
-        })),
+        departments: (distribution?.byCategory || []).map(cat => {
+          const catName = cat._id || 'Default';
+          const perf = performance.find(p => p._id === catName);
+          const total = cat.count || 0;
+          const resolved = perf ? (perf.count || 0) : 0;
+          const avgRes = perf ? (perf.avgResolutionTime || 0) : 0;
+          
+          return {
+            name: catName.charAt(0).toUpperCase() + catName.slice(1),
+            total,
+            resolved,
+            avgResolutionTime: Number(avgRes.toFixed(1)),
+            efficiency: Math.max(0, Math.round(100 - avgRes))
+          };
+        }),
         geographic: geographic.map(g => ({
           id: `${g._id.lat}-${g._id.lng}`,
           lat: g.center?.lat || 0,

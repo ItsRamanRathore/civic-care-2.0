@@ -105,6 +105,16 @@ module.exports = app;
 if (!process.env.VERCEL) {
   connectDB().then(() => {
     const PORT = process.env.PORT || 5000;
-    app.listen(PORT, () => console.log(`🚀 Monolith running on port ${PORT}`));
+    const server = app.listen(PORT, () => console.log(`🚀 Monolith running on port ${PORT}`));
+    
+    // Add socket.io locally to prevent 404s
+    const { Server } = require('socket.io');
+    const io = new Server(server, {
+      cors: { origin: '*', methods: ['GET', 'POST'] }
+    });
+    io.on('connection', (socket) => {
+      console.log('🔗 Client connected to socket:', socket.id);
+      socket.on('disconnect', () => console.log('❌ Client disconnected:', socket.id));
+    });
   });
 }

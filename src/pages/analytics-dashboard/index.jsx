@@ -166,18 +166,20 @@ const AnalyticsDashboard = () => {
   }, [realTimeEnabled, fetchAnalyticsData]);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-[#fafafa] relative overflow-hidden">
+      <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(#000 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
+      <div className="relative z-10">
       <Header currentUser={currentUser} notificationCount={5} />
-      <main className="container mx-auto px-4 py-6">
+      <main className="container mx-auto px-4 py-10">
         <Breadcrumb />
         
         {/* Page Header */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-8 mt-4">
           <div>
-            <h1 className="text-3xl font-bold text-foreground mb-2">
+            <h1 className="text-4xl md:text-5xl font-black text-neutral-900 mb-2 tracking-tight">
               Analytics Dashboard
-              <span className="ml-3 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                <span className="w-2 h-2 bg-green-400 rounded-full mr-1 animate-pulse inline-block"></span>
+              <span className="ml-3 inline-flex items-center px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-[0.2em] bg-indigo-500/10 text-indigo-600 align-middle">
+                <span className="w-2 h-2 bg-indigo-500 rounded-full mr-2 animate-pulse inline-block"></span>
                 Active Intel
               </span>
             </h1>
@@ -464,6 +466,7 @@ const AnalyticsDashboard = () => {
           </p>
         </div>
       </main>
+      </div>
     </div>
   );
 };
