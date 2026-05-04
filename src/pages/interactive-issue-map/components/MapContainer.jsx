@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { MapContainer as LeafletMapContainer, TileLayer, Marker, Popup, useMap, GeoJSON } from 'react-leaflet';
 import L from 'leaflet';
-import MarkerClusterGroup from 'react-leaflet-cluster';
+
 import 'leaflet.heat';
 import Icon from '../../../components/AppIcon';
 import Button from '../../../components/ui/Button';
@@ -133,12 +133,7 @@ const MapContainer = ({
         {viewMode === 'heat' ? (
           <HeatmapLayer issues={validIssues} />
         ) : (
-          <MarkerClusterGroup 
-            chunkedLoading 
-            maxClusterRadius={30} 
-            disableClusteringAtZoom={13}
-            spiderfyOnMaxZoom={true}
-          >
+          <React.Fragment>
             {validIssues.map((issue) => (
               <Marker key={issue._id || issue.id} position={[issue.coordinates.lat, issue.coordinates.lng]} icon={createCustomIcon(issue.category, issue.status)} eventHandlers={{ click: () => handleMarkerClick(issue) }}>
                 <Popup>
@@ -150,7 +145,7 @@ const MapContainer = ({
                 </Popup>
               </Marker>
             ))}
-          </MarkerClusterGroup>
+          </React.Fragment>
         )}
       </LeafletMapContainer>
 
