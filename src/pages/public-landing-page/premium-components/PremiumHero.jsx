@@ -33,7 +33,7 @@ export const PremiumHero = () => {
         </motion.div>
 
         <motion.div 
-          className="absolute bottom-48 left-[5%] z-30"
+          className="absolute bottom-32 right-[40%] z-30"
           animate={{ y: [0, 15, 0] }}
           transition={{ repeat: Infinity, duration: 5, ease: "easeInOut", delay: 1 }}
         >
