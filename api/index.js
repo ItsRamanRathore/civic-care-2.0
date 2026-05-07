@@ -11,7 +11,7 @@ const app = express();
 // Global State
 let store;
 let routesLoaded = false;
-let authRoutes, issueRoutes, departmentRoutes, analyticsRoutes, publicRoutes;
+let authRoutes, issueRoutes, departmentRoutes, analyticsRoutes, publicRoutes, webhookRoutes;
 
 // Helper: Lazy Load Routes to optimize Cold Starts
 const lazyLoadRoutes = () => {
@@ -22,6 +22,7 @@ const lazyLoadRoutes = () => {
     departmentRoutes = require('../routes/departmentRoutes');
     analyticsRoutes = require('../routes/analyticsRoutes');
     publicRoutes = require('../routes/publicRoutes');
+    webhookRoutes = require('../routes/webhookRoutes');
     routesLoaded = true;
     console.log('📦 All routes lazy-loaded successfully');
   } catch (err) {
@@ -85,6 +86,7 @@ app.use(['/api/issues', '/issues'], (req, res, next) => issueRoutes(req, res, ne
 app.use(['/api/departments', '/departments'], (req, res, next) => departmentRoutes(req, res, next));
 app.use(['/api/analytics', '/analytics'], (req, res, next) => analyticsRoutes(req, res, next));
 app.use(['/api/public', '/public'], (req, res, next) => publicRoutes(req, res, next));
+app.use(['/api/webhooks', '/webhooks'], (req, res, next) => webhookRoutes(req, res, next));
 
 // Health Check (Bypass heavy lifting)
 app.get(['/api/health', '/health'], (req, res) => {
