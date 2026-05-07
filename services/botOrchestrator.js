@@ -164,9 +164,19 @@ class BotOrchestrator {
         status: 'submitted',
         is_ai_categorized: true,
         duplicate_of: potentialDuplicate ? potentialDuplicate._id : null,
-        reporter_name: `Anonymous ${session.platform} User`,
-        images: session.extracted_data.image_url ? [{ image_url: session.extracted_data.image_url }] : []
+        reporter_name: `Anonymous ${session.platform} User`
       });
+
+      // 4. Save Image to separate IssueImage collection
+      if (session.extracted_data.image_url) {
+        const IssueImage = require('../models/IssueImage');
+        await IssueImage.create({
+          issue_id: newIssue._id,
+          image_path: session.extracted_data.image_url,
+          image_url: session.extracted_data.image_url,
+          caption: 'Uploaded via Bot'
+        });
+      }
 
       // Reset Session
       session.state = 'IDLE';
