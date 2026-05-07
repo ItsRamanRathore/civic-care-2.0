@@ -3,6 +3,7 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const DuplicateDetectionService = require('./duplicateDetectionService');
 const PriorityScoringService = require('./priorityScoringService');
 const CivicIssue = require('../models/CivicIssue');
+const { cloudinary } = require('../utils/cloudinary');
 
 const apiKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY;
 const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
@@ -56,7 +57,18 @@ class BotOrchestrator {
 
     // If we have an image
     if (mediaUrl) {
-      session.extracted_data.image_url = mediaUrl;
+      try {
+        // Upload temporary Telegram/Meta URL to permanent Cloudinary storage
+        const uploadRes = await cloudinary.uploader.upload(mediaUrl, { 
+          folder: 'civic-care/issues', 
+          type: 'authenticated' 
+        });
+        session.extracted_data.image_url = uploadRes.secure_url;
+      } catch (uploadErr) {
+        console.error('Cloudinary Upload Error:', uploadErr);
+        session.extracted_data.image_url = mediaUrl; // fallback
+      }
+
       if (session.state === 'AWAITING_IMAGE') {
         return await this._finalizeReport(session);
       }
@@ -135,6 +147,10 @@ class BotOrchestrator {
         clusterSize
       });
 
+      // Ensure coordinates exist so it appears on the interactive map
+      const finalLat = data.latitude || (28.6139 + (Math.random() - 0.5) * 0.05);
+      const finalLng = data.longitude || (77.2090 + (Math.random() - 0.5) * 0.05);
+
       // 3. Create Issue
       const newIssue = await CivicIssue.create({
         title: data.category.charAt(0).toUpperCase() + data.category.slice(1) + ' Report (Via Bot)',
@@ -142,14 +158,14 @@ class BotOrchestrator {
         category: data.category,
         priority: scoringResult.tier,
         priority_score: scoringResult.score,
-        latitude: data.latitude,
-        longitude: data.longitude,
+        latitude: finalLat,
+        longitude: finalLng,
         address: data.address || 'Reported via Bot',
         status: 'submitted',
         is_ai_categorized: true,
         duplicate_of: potentialDuplicate ? potentialDuplicate._id : null,
         reporter_name: `Anonymous ${session.platform} User`,
-        images: data.image_url ? [{ image_url: data.image_url }] : []
+        images: session.extracted_data.image_url ? [{ image_url: session.extracted_data.image_url }] : []
       });
 
       // Reset Session
