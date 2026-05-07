@@ -78,7 +78,7 @@ class BotOrchestrator {
   }
 
   static async _analyzeIntentWithGemini(session, text) {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
     const prompt = `You are an AI assistant for a smart city grievance portal. 
     A user just sent this message: "${text}"
     

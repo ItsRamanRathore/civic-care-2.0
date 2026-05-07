@@ -21,7 +21,7 @@ class ModerationService {
 
     try {
       const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+      const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
       
       const prompt = `Analyze the following comment for toxicity, spam, or community guideline violations.
       Respond ONLY with a JSON object containing three fields:
