@@ -145,7 +145,7 @@ class BotOrchestrator {
         latitude: data.latitude,
         longitude: data.longitude,
         address: data.address || 'Reported via Bot',
-        status: 'pending',
+        status: 'submitted',
         is_ai_categorized: true,
         duplicate_of: potentialDuplicate ? potentialDuplicate._id : null,
         reporter_name: `Anonymous ${session.platform} User`,
