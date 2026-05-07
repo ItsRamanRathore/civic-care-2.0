@@ -5,10 +5,11 @@ exports.telegramWebhook = async (req, res) => {
   try {
     // Telegram expects a 200 OK fast, otherwise it retries.
     // We send 200 immediately, then process in background.
-    res.sendStatus(200);
     await TelegramService.handleWebhook(req);
+    res.sendStatus(200);
   } catch (error) {
     console.error('Telegram Webhook Error:', error);
+    if (!res.headersSent) res.sendStatus(500);
   }
 };
 
@@ -24,9 +25,10 @@ exports.whatsappVerify = (req, res) => {
 exports.whatsappWebhook = async (req, res) => {
   try {
     // Meta expects a 200 OK quickly.
-    res.sendStatus(200);
     await WhatsappService.handleWebhook(req);
+    res.sendStatus(200);
   } catch (error) {
     console.error('WhatsApp Webhook Error:', error);
+    if (!res.headersSent) res.sendStatus(500);
   }
 };
