@@ -65,6 +65,7 @@
     "multer-storage-cloudinary": "^4.0.0",
     "node-cron": "^4.2.1",
     "node-telegram-bot-api": "^0.67.0",
+    "nodemailer": "^8.0.7",
     "openai": "^4.86.1",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
@@ -75,7 +76,8 @@
     "react-router-dom": "^6.30.3",
     "regression": "^2.0.1",
     "socket.io": "^4.8.3",
-    "speakeasy": "^2.0.0"
+    "speakeasy": "^2.0.0",
+    "twilio": "^6.0.2"
   },
   "scripts": {
     "prestart": "npx -y kill-port 5000",

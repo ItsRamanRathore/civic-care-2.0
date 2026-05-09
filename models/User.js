@@ -62,7 +62,20 @@ const userSchema = new mongoose.Schema({
   },
   fcm_tokens: [String], // For push notifications
   
-  // Security Hardening (Phase 3)
+  // Security Hardening & Verification
+  email_verified: {
+    type: Boolean,
+    default: false
+  },
+  phone_verified: {
+    type: Boolean,
+    default: false
+  },
+  verification_meta: {
+    email_token: String,
+    email_expires: Date,
+    phone_otp_expires: Date
+  },
   mfa_enabled: {
     type: Boolean,
     default: false

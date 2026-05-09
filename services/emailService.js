@@ -1,80 +1,69 @@
 const sgMail = require('@sendgrid/mail');
 
-const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY;
-const FROM_EMAIL = process.env.FROM_EMAIL || 'noreply@civiccare.com';
-
-if (SENDGRID_API_KEY) {
-  sgMail.setApiKey(SENDGRID_API_KEY);
+if (process.env.SENDGRID_API_KEY) {
+  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 }
 
 class EmailService {
   /**
-   * Generic mail sender (SendGrid focused currently)
+   * Send a generic email
    */
-  static async send(to, subject, text, html, templateData = null) {
-    if (!SENDGRID_API_KEY) {
-      console.warn('⚠️ SENDGRID_API_KEY missing. Email suppressed.');
-      return false;
+  static async sendEmail(to, subject, text, html) {
+    if (!process.env.SENDGRID_API_KEY) {
+      console.warn('SendGrid API Key missing. Email not sent.');
+      return;
     }
 
     const msg = {
       to,
-      from: FROM_EMAIL,
+      from: 'noreply@civiccare.org', // Use your verified sender here
       subject,
       text,
-      html,
-      // If using dynamic templates later
-      templateId: templateData?.templateId,
-      dynamicTemplateData: templateData?.data
+      html: html || text,
     };
 
     try {
       await sgMail.send(msg);
-      console.log(`✅ Email sent to ${to}: ${subject}`);
-      return true;
+      console.log(`📧 Email sent to ${to}`);
     } catch (error) {
-      console.error('❌ SendGrid Error:', error.response?.body || error.message);
-      return false;
+      console.error('SendGrid Error:', error.response?.body || error.message);
     }
   }
 
   /**
-   * Status change alert for citizens
+   * Send Verification Email
    */
-  static async sendStatusUpdate(user, issue) {
-    const subject = `Update on your reported issue: ${issue.title}`;
-    const statusLabel = issue.status.replace('_', ' ').toUpperCase();
+  static async sendVerificationEmail(to, token) {
+    const verifyUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify-email?token=${token}`;
     
     const html = `
-      <div style="font-family: sans-serif; color: #333; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
-        <h2 style="color: #2563EB;">Civic Care Update</h2>
-        <p>Hello ${user.full_name || 'Citizen'},</p>
-        <p>The status of your reported issue "<strong>${issue.title}</strong>" has been updated to:</p>
-        <div style="background: #F3F4F6; padding: 15px; border-radius: 5px; font-weight: bold; text-align: center; margin: 20px 0;">
-          ${statusLabel}
-        </div>
-        <p>Location: ${issue.address}</p>
-        <a href="${process.env.FRONTEND_URL}/issue/${issue._id}" style="display: block; background: #2563EB; color: white; padding: 12px; text-align: center; text-decoration: none; border-radius: 5px; margin-top: 20px;">View Report Details</a>
-        <p style="font-size: 12px; color: #999; margin-top: 30px;">This is an automated notification from Civic Care. Please do not reply directly to this email.</p>
+      <div style="font-family: sans-serif; padding: 20px; color: #333;">
+        <h2 style="color: #2563eb;">Welcome to Civic Care 2.0!</h2>
+        <p>Please click the button below to verify your email address and activate your account.</p>
+        <a href="${verifyUrl}" style="display: inline-block; padding: 12px 24px; background: #2563eb; color: white; text-decoration: none; border-radius: 6px; margin: 20px 0;">Verify Email</a>
+        <p>If you did not sign up for this account, you can ignore this email.</p>
       </div>
     `;
 
-    return this.send(user.email, subject, `Your issue status is now ${statusLabel}`, html);
+    await this.sendEmail(to, 'Verify Your Civic Care Account', 'Please verify your email.', html);
   }
 
   /**
-   * Alert for Ward Officers on high-priority issues
+   * Send Complaint Status Update
    */
-  static async sendAdminAlert(officer, issue) {
-    const subject = `[URGENT] High Priority Issue in Your Ward`;
+  static async sendStatusUpdate(to, issueId, status, category) {
     const html = `
-      <h3>Action Required: High Priority Issue</h3>
-      <p>A new <strong>${issue.priority}</strong> priority issue has been reported in your jurisdiction.</p>
-      <p>Category: ${issue.category}</p>
-      <p>Description: ${issue.description}</p>
-      <a href="${process.env.FRONTEND_URL}/admin/issue/${issue._id}">Open Admin Dashboard</a>
+      <div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 8px;">
+        <h3 style="color: #2563eb;">Complaint Status Update</h3>
+        <p>Your report <strong>${issueId}</strong> (${category}) has been updated.</p>
+        <div style="padding: 10px; background: #f8fafc; border-left: 4px solid #2563eb;">
+          <strong>New Status:</strong> ${status.toUpperCase()}
+        </div>
+        <p style="margin-top: 20px; font-size: 0.9em; color: #666;">Thank you for contributing to a better city!</p>
+      </div>
     `;
-    return this.send(officer.email, subject, `Urgent: ${issue.title}`, html);
+    
+    await this.sendEmail(to, `Update on Complaint ${issueId}`, `Status: ${status}`, html);
   }
 }
 
