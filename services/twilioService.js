@@ -53,9 +53,12 @@ class TwilioService {
    */
   static async sendOTP(phoneNumber, channel = 'sms') {
     try {
+      // Twilio Verify requires E.164 format (e.g., +919039609873)
+      const formattedNumber = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
+      
       const verification = await client.verify.v2.services(verifySid)
         .verifications
-        .create({ to: phoneNumber, channel: channel });
+        .create({ to: formattedNumber, channel: channel });
       return verification.status;
     } catch (e) {
       console.error('Twilio Verify Send Error:', e.message);
@@ -68,9 +71,11 @@ class TwilioService {
    */
   static async checkOTP(phoneNumber, code) {
     try {
+      const formattedNumber = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
+      
       const verificationCheck = await client.verify.v2.services(verifySid)
         .verificationChecks
-        .create({ to: phoneNumber, code: code });
+        .create({ to: formattedNumber, code: code });
       return verificationCheck.status === 'approved';
     } catch (e) {
       console.error('Twilio Verify Check Error:', e.message);
