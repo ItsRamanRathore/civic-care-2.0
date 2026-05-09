@@ -26,6 +26,7 @@ router.post('/refresh', [
 ], authController.refreshToken);
 
 router.get('/verify-email', authController.verifyEmail);
+router.post('/verify-email-otp', authController.verifyEmailOTP);
 
 // Protected routes
 router.use(protect);

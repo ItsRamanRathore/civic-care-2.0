@@ -31,21 +31,21 @@ class EmailService {
   }
 
   /**
-   * Send Verification Email
+   * Send Verification Email with OTP
    */
-  static async sendVerificationEmail(to, token) {
-    const verifyUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify-email?token=${token}`;
-    
+  static async sendVerificationEmail(to, otp) {
     const html = `
-      <div style="font-family: sans-serif; padding: 20px; color: #333;">
-        <h2 style="color: #2563eb;">Welcome to Civic Care 2.0!</h2>
-        <p>Please click the button below to verify your email address and activate your account.</p>
-        <a href="${verifyUrl}" style="display: inline-block; padding: 12px 24px; background: #2563eb; color: white; text-decoration: none; border-radius: 6px; margin: 20px 0;">Verify Email</a>
-        <p>If you did not sign up for this account, you can ignore this email.</p>
+      <div style="font-family: sans-serif; padding: 20px; color: #333; text-align: center; border: 1px solid #eee; border-radius: 12px; max-width: 500px; margin: auto;">
+        <h2 style="color: #2563eb;">Verify Your Email</h2>
+        <p>Please use the 6-digit code below to verify your email address on Civic Care 2.0.</p>
+        <div style="font-size: 32px; font-weight: bold; letter-spacing: 8px; padding: 20px; background: #f8fafc; border-radius: 8px; margin: 20px 0; color: #1e293b; border: 1px dashed #cbd5e1;">
+          ${otp}
+        </div>
+        <p style="font-size: 0.85em; color: #64748b;">This code will expire in 15 minutes.</p>
       </div>
     `;
 
-    await this.sendEmail(to, 'Verify Your Civic Care Account', 'Please verify your email.', html);
+    await this.sendEmail(to, 'Your Civic Care Verification Code', `Your OTP is: ${otp}`, html);
   }
 
   /**

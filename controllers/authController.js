@@ -41,9 +41,9 @@ exports.register = async (req, res) => {
       return res.status(400).json({ message: 'User already exists' });
     }
 
-    // Generate Verification Token for Email
-    const emailToken = crypto.randomBytes(32).toString('hex');
-    const emailExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+    // Generate Verification OTP for Email
+    const emailOtp = Math.floor(100000 + Math.random() * 900000).toString();
+    const emailExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
 
     const user = await User.create({
       email,
@@ -54,14 +54,14 @@ exports.register = async (req, res) => {
       email_verified: false,
       phone_verified: false,
       verification_meta: {
-        email_token: emailToken,
+        email_token: emailOtp, // Reusing token field for OTP
         email_expires: emailExpires
       }
     });
 
-    // Send Verification Email
+    // Send Verification Email with OTP
     const EmailService = require('../services/emailService');
-    await EmailService.sendVerificationEmail(email, emailToken);
+    await EmailService.sendVerificationEmail(email, emailOtp);
 
     // Send Phone Verification (OTP)
     const TwilioService = require('../services/twilioService');
@@ -111,8 +111,15 @@ exports.sendPhoneVerification = async (req, res) => {
 
 exports.verifyPhone = async (req, res) => {
   try {
-    const { code } = req.body;
-    const user = await User.findById(req.user.id);
+    const { code, userId } = req.body;
+    const targetId = req.user?.id || userId;
+
+    if (!targetId) {
+      return res.status(400).json({ message: 'User ID is required for verification' });
+    }
+
+    const user = await User.findById(targetId);
+    if (!user) return res.status(404).json({ message: 'User not found' });
 
     const TwilioService = require('../services/twilioService');
     const isApproved = await TwilioService.checkOTP(user.phone, code);
@@ -140,6 +147,30 @@ exports.verifyEmail = async (req, res) => {
 
     if (!user) {
       return res.status(400).json({ message: 'Invalid or expired verification token' });
+    }
+
+    user.email_verified = true;
+    user.verification_meta.email_token = undefined;
+    user.verification_meta.email_expires = undefined;
+    await user.save();
+
+    res.status(200).json({ status: 'success', message: 'Email verified successfully' });
+  } catch (err) {
+    res.status(400).json({ status: 'fail', message: err.message });
+  }
+};
+
+exports.verifyEmailOTP = async (req, res) => {
+  try {
+    const { code, userId } = req.body;
+    const user = await User.findOne({
+      _id: userId,
+      'verification_meta.email_token': code,
+      'verification_meta.email_expires': { $gt: Date.now() }
+    });
+
+    if (!user) {
+      return res.status(400).json({ message: 'Invalid or expired Email OTP' });
     }
 
     user.email_verified = true;

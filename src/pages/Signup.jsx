@@ -98,7 +98,7 @@ const Signup = () => {
         return;
       }
 
-      setSuccessMessage(t('accountCreatedVerify', 'Account created! Please check your email for a verification link and enter the OTP sent to your phone.'));
+      setSuccessMessage(t('accountCreatedVerify', 'Account created! Please enter the 6-digit codes sent to your email and phone.'));
       setUnverifiedUserId(data.data.user.id);
       setShowOtpModal(true);
     } catch (error) {
@@ -108,19 +108,47 @@ const Signup = () => {
     }
   };
 
-  const handleOtpSubmit = async (e) => {
+  const [emailOtp, setEmailOtp] = useState('');
+  const [isEmailVerified, setIsEmailVerified] = useState(false);
+  const [isPhoneVerified, setIsPhoneVerified] = useState(false);
+
+  const handleEmailOtpSubmit = async (e) => {
+    e.preventDefault();
+    if (emailOtp.length < 6) return;
+
+    setIsVerifyingOtp(true);
+    try {
+      const response = await apiClient.post('/auth/verify-email-otp', { code: emailOtp, userId: unverifiedUserId });
+      if (response.data.status === 'success') {
+        setIsEmailVerified(true);
+        if (isPhoneVerified) {
+          setSuccessMessage(t('allVerified', 'Everything verified! Redirecting to login...'));
+          setTimeout(() => navigate('/login'), 2000);
+        }
+      }
+    } catch (error) {
+      setAuthError(error.response?.data?.message || 'Invalid Email OTP');
+    } finally {
+      setIsVerifyingOtp(false);
+    }
+  };
+
+  const handlePhoneOtpSubmit = async (e) => {
     e.preventDefault();
     if (otpValue.length < 4) return;
 
     setIsVerifyingOtp(true);
     try {
-      const response = await apiClient.post('/auth/verify-phone', { code: otpValue });
+      const response = await apiClient.post('/auth/verify-phone', { code: otpValue, userId: unverifiedUserId });
       if (response.data.status === 'success') {
-        setSuccessMessage(t('phoneVerified', 'Phone verified! Redirecting to dashboard...'));
-        setTimeout(() => navigate('/'), 2000);
+        setIsPhoneVerified(true);
+        if (isEmailVerified) {
+          setSuccessMessage(t('allVerified', 'Everything verified! Redirecting to login...'));
+          setTimeout(() => navigate('/login'), 2000);
+        }
       }
     } catch (error) {
-      setAuthError(error.response?.data?.message || 'Invalid OTP');
+      setAuthError(error.response?.data?.message || 'Invalid Phone OTP');
     } finally {
       setIsVerifyingOtp(false);
     }
@@ -202,9 +230,80 @@ const Signup = () => {
                     <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6">
                       <CheckCircle size={40} className="text-emerald-600" />
                     </div>
-                    <h3 className="text-2xl font-black text-slate-900 mb-2 font-heading tracking-tight">{t('success', 'Account Verified')}</h3>
+                    <h3 className="text-2xl font-black text-slate-900 mb-2 font-heading tracking-tight">{t('success', 'Account Created')}</h3>
                     <p className="text-slate-500 font-medium leading-relaxed">{successMessage}</p>
                   </motion.div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* OTP Modal */}
+            <AnimatePresence>
+              {showOtpModal && (
+                <motion.div 
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="absolute inset-0 z-[60] bg-white/95 backdrop-blur-xl p-12 flex flex-col items-center justify-center text-center"
+                >
+                  <div className="w-full max-w-md space-y-10">
+                    <div className="space-y-4">
+                      <div className="w-16 h-16 bg-purple-100 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                        <Shield size={32} className="text-purple-600" />
+                      </div>
+                      <h2 className="text-3xl font-black text-slate-900 tracking-tight uppercase">Dual Verification</h2>
+                      <p className="text-slate-500 font-medium">Please enter the 6-digit codes sent to your devices</p>
+                    </div>
+
+                    <div className="space-y-8">
+                      {/* Email OTP Field */}
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Email OTP</span>
+                          {isEmailVerified && <CheckCircle size={16} className="text-emerald-500" />}
+                        </div>
+                        <form onSubmit={handleEmailOtpSubmit} className="relative">
+                          <input
+                            type="text"
+                            maxLength="6"
+                            disabled={isEmailVerified}
+                            value={emailOtp}
+                            onChange={(e) => setEmailOtp(e.target.value)}
+                            placeholder="000000"
+                            className={`w-full h-16 text-center text-2xl font-black tracking-[0.5em] rounded-2xl border-2 ${isEmailVerified ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-slate-50 border-slate-100 focus:border-purple-500'} transition-all`}
+                          />
+                          {!isEmailVerified && emailOtp.length === 6 && (
+                            <button type="submit" className="absolute right-4 top-1/2 -translate-y-1/2 text-purple-600 font-black text-xs uppercase">Verify</button>
+                          )}
+                        </form>
+                      </div>
+
+                      {/* Phone OTP Field */}
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Phone OTP</span>
+                          {isPhoneVerified && <CheckCircle size={16} className="text-emerald-500" />}
+                        </div>
+                        <form onSubmit={handlePhoneOtpSubmit} className="relative">
+                          <input
+                            type="text"
+                            maxLength="6"
+                            disabled={isPhoneVerified}
+                            value={otpValue}
+                            onChange={(e) => setOtpValue(e.target.value)}
+                            placeholder="000000"
+                            className={`w-full h-16 text-center text-2xl font-black tracking-[0.5em] rounded-2xl border-2 ${isPhoneVerified ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-slate-50 border-slate-100 focus:border-purple-500'} transition-all`}
+                          />
+                          {!isPhoneVerified && otpValue.length >= 4 && (
+                            <button type="submit" className="absolute right-4 top-1/2 -translate-y-1/2 text-purple-600 font-black text-xs uppercase">Verify</button>
+                          )}
+                        </form>
+                      </div>
+                    </div>
+
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                      Your account will be activated once both codes are verified.
+                    </p>
+                  </div>
                 </motion.div>
               )}
             </AnimatePresence>
