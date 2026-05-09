@@ -53,8 +53,15 @@ class TwilioService {
    */
   static async sendOTP(phoneNumber, channel = 'sms') {
     try {
-      // Twilio Verify requires E.164 format (e.g., +919039609873)
-      const formattedNumber = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
+      // Twilio Verify requires E.164 format
+      let formattedNumber = phoneNumber.replace(/\s/g, '');
+      
+      // If it's a 10-digit Indian number, add +91
+      if (formattedNumber.length === 10 && /^[6-9]/.test(formattedNumber)) {
+        formattedNumber = `+91${formattedNumber}`;
+      } else if (!formattedNumber.startsWith('+')) {
+        formattedNumber = `+${formattedNumber}`;
+      }
       
       const verification = await client.verify.v2.services(verifySid)
         .verifications
@@ -71,7 +78,13 @@ class TwilioService {
    */
   static async checkOTP(phoneNumber, code) {
     try {
-      const formattedNumber = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
+      let formattedNumber = phoneNumber.replace(/\s/g, '');
+      
+      if (formattedNumber.length === 10 && /^[6-9]/.test(formattedNumber)) {
+        formattedNumber = `+91${formattedNumber}`;
+      } else if (!formattedNumber.startsWith('+')) {
+        formattedNumber = `+${formattedNumber}`;
+      }
       
       const verificationCheck = await client.verify.v2.services(verifySid)
         .verificationChecks
