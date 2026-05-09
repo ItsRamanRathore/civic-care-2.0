@@ -63,9 +63,9 @@ exports.register = async (req, res) => {
     const EmailService = require('../services/emailService');
     await EmailService.sendVerificationEmail(email, emailOtp);
 
-    // Send Phone Verification (OTP)
+    // Send Phone Verification (OTP) via WhatsApp
     const TwilioService = require('../services/twilioService');
-    await TwilioService.sendOTP(phone, 'sms');
+    await TwilioService.sendOTP(phone, 'whatsapp');
 
     // Audit Log
     await AlertService.logAdminAction({
@@ -101,7 +101,7 @@ exports.sendPhoneVerification = async (req, res) => {
     if (user.phone_verified) return res.status(400).json({ message: 'Phone already verified' });
 
     const TwilioService = require('../services/twilioService');
-    await TwilioService.sendOTP(user.phone, 'sms');
+    await TwilioService.sendOTP(user.phone, 'whatsapp');
 
     res.status(200).json({ status: 'success', message: 'OTP sent successfully' });
   } catch (err) {
