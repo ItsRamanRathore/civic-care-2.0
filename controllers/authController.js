@@ -30,27 +30,47 @@ const AlertService = require('../services/alertService');
 
 exports.register = async (req, res) => {
   try {
-    const { email, password, full_name, role } = req.body;
+    const { email, password, full_name, role, phone } = req.body;
+
+    if (!phone) {
+      return res.status(400).json({ message: 'Phone number is required' });
+    }
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ message: 'User already exists' });
     }
 
+    // Generate Verification Token for Email
+    const emailToken = crypto.randomBytes(32).toString('hex');
+    const emailExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
     const user = await User.create({
       email,
       password,
       full_name,
+      phone,
       role: role || 'citizen',
+      email_verified: false,
+      phone_verified: false,
+      verification_meta: {
+        email_token: emailToken,
+        email_expires: emailExpires
+      }
     });
 
-    const accessToken = generateAccessToken(user);
-    const refreshToken = await generateRefreshToken(user, req.ip);
+    // Send Verification Email
+    const EmailService = require('../services/emailService');
+    await EmailService.sendVerificationEmail(email, emailToken);
+
+    // Send Phone Verification (OTP)
+    const TwilioService = require('../services/twilioService');
+    await TwilioService.sendOTP(phone, 'sms');
 
     // Audit Log
     await AlertService.logAdminAction({
       user_id: user._id,
-      action: 'USER_REGISTER',
+      action: 'USER_REGISTER_PENDING_VERIFY',
       resource: 'User',
       resource_id: user._id,
       ip_address: req.ip,
@@ -59,10 +79,75 @@ exports.register = async (req, res) => {
 
     res.status(201).json({
       status: 'success',
-      accessToken,
-      refreshToken: refreshToken.token,
-      data: { user },
+      message: 'Account created. Please verify your email and phone number.',
+      data: { 
+        user: {
+          id: user._id,
+          email: user.email,
+          phone: user.phone,
+          email_verified: false,
+          phone_verified: false
+        }
+      },
     });
+  } catch (err) {
+    res.status(400).json({ status: 'fail', message: err.message });
+  }
+};
+
+exports.sendPhoneVerification = async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (user.phone_verified) return res.status(400).json({ message: 'Phone already verified' });
+
+    const TwilioService = require('../services/twilioService');
+    await TwilioService.sendOTP(user.phone, 'sms');
+
+    res.status(200).json({ status: 'success', message: 'OTP sent successfully' });
+  } catch (err) {
+    res.status(400).json({ status: 'fail', message: err.message });
+  }
+};
+
+exports.verifyPhone = async (req, res) => {
+  try {
+    const { code } = req.body;
+    const user = await User.findById(req.user.id);
+
+    const TwilioService = require('../services/twilioService');
+    const isApproved = await TwilioService.checkOTP(user.phone, code);
+
+    if (!isApproved) {
+      return res.status(400).json({ message: 'Invalid or expired OTP' });
+    }
+
+    user.phone_verified = true;
+    await user.save();
+
+    res.status(200).json({ status: 'success', message: 'Phone verified successfully' });
+  } catch (err) {
+    res.status(400).json({ status: 'fail', message: err.message });
+  }
+};
+
+exports.verifyEmail = async (req, res) => {
+  try {
+    const { token } = req.query;
+    const user = await User.findOne({
+      'verification_meta.email_token': token,
+      'verification_meta.email_expires': { $gt: Date.now() }
+    });
+
+    if (!user) {
+      return res.status(400).json({ message: 'Invalid or expired verification token' });
+    }
+
+    user.email_verified = true;
+    user.verification_meta.email_token = undefined;
+    user.verification_meta.email_expires = undefined;
+    await user.save();
+
+    res.status(200).json({ status: 'success', message: 'Email verified successfully' });
   } catch (err) {
     res.status(400).json({ status: 'fail', message: err.message });
   }
@@ -79,6 +164,18 @@ exports.login = async (req, res) => {
     const user = await User.findOne({ email }).select('+password');
     if (!user || !(await user.comparePassword(password))) {
       return res.status(401).json({ message: 'Incorrect email or password' });
+    }
+
+    // Block unverified users
+    if (!user.email_verified || !user.phone_verified) {
+      return res.status(403).json({ 
+        status: 'verification_required',
+        message: 'Please verify your email and phone number to access your account.',
+        data: {
+          email_verified: user.email_verified,
+          phone_verified: user.phone_verified
+        }
+      });
     }
 
     // Check for MFA

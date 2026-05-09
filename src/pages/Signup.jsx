@@ -26,6 +26,10 @@ const Signup = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [authError, setAuthError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [otpValue, setOtpValue] = useState('');
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+  const [unverifiedUserId, setUnverifiedUserId] = useState(null);
 
   const roleOptions = [
     { value: 'citizen', label: t('citizen'), description: t('citizenDescription') },
@@ -60,7 +64,9 @@ const Signup = () => {
     } else if (formData?.password !== formData?.confirmPassword) {
       newErrors.confirmPassword = t('passwordsDoNotMatch');
     }
-    if (formData?.phone && !/^[\+]?[1-9][\d]{0,15}$/?.test(formData?.phone?.replace(/\s/g, ''))) {
+    if (!formData?.phone) {
+      newErrors.phone = t('phoneRequired', 'Phone number is required');
+    } else if (!/^[\+]?[1-9][\d]{0,15}$/?.test(formData?.phone?.replace(/\s/g, ''))) {
       newErrors.phone = t('invalidPhoneNumber');
     }
     if (!formData?.role) {
@@ -92,19 +98,31 @@ const Signup = () => {
         return;
       }
 
-      setSuccessMessage(t('accountCreatedRedirecting'));
-      setTimeout(() => {
-        if (formData.role === 'admin' || formData.role === 'department_manager') {
-          navigate('/admin-dashboard');
-        } else {
-          navigate('/');
-        }
-      }, 2000);
-
+      setSuccessMessage(t('accountCreatedVerify', 'Account created! Please check your email for a verification link and enter the OTP sent to your phone.'));
+      setUnverifiedUserId(data.data.user.id);
+      setShowOtpModal(true);
     } catch (error) {
       setAuthError(t('unexpectedError'));
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleOtpSubmit = async (e) => {
+    e.preventDefault();
+    if (otpValue.length < 4) return;
+
+    setIsVerifyingOtp(true);
+    try {
+      const response = await apiClient.post('/auth/verify-phone', { code: otpValue });
+      if (response.data.status === 'success') {
+        setSuccessMessage(t('phoneVerified', 'Phone verified! Redirecting to dashboard...'));
+        setTimeout(() => navigate('/'), 2000);
+      }
+    } catch (error) {
+      setAuthError(error.response?.data?.message || 'Invalid OTP');
+    } finally {
+      setIsVerifyingOtp(false);
     }
   };
 
@@ -276,13 +294,14 @@ const Signup = () => {
                     required
                   />
                   <Input
-                    label={t('phoneNumberOptional')}
+                    label={t('phoneNumber')}
                     type="tel"
                     placeholder="+91 (XXX) XXX-XXXX"
                     value={formData?.phone}
                     onChange={(e) => handleInputChange('phone', e?.target?.value)}
                     error={errors?.phone}
                     className="h-14 rounded-2xl bg-slate-50 border-transparent focus:bg-white transition-all text-base px-5 font-medium"
+                    required
                   />
                 </div>
               </div>

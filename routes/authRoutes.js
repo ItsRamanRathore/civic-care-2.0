@@ -25,8 +25,12 @@ router.post('/refresh', [
   validate
 ], authController.refreshToken);
 
+router.get('/verify-email', authController.verifyEmail);
+
 // Protected routes
 router.use(protect);
+router.post('/send-otp', authController.sendPhoneVerification);
+router.post('/verify-phone', authController.verifyPhone);
 router.get('/me', authController.getMe);
 router.get('/profile', authController.getProfile);
 router.post('/logout', authController.revokeToken);
