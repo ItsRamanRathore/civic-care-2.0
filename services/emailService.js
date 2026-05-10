@@ -1,69 +1,80 @@
 const sgMail = require('@sendgrid/mail');
 
-if (process.env.SENDGRID_API_KEY) {
-  sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY;
+const FROM_EMAIL = process.env.FROM_EMAIL || 'noreply@civiccare.com';
+
+if (SENDGRID_API_KEY) {
+  sgMail.setApiKey(SENDGRID_API_KEY);
 }
 
 class EmailService {
   /**
-   * Send a generic email
+   * Generic mail sender (SendGrid focused currently)
    */
-  static async sendEmail(to, subject, text, html) {
-    if (!process.env.SENDGRID_API_KEY) {
-      console.warn('SendGrid API Key missing. Email not sent.');
-      return;
+  static async send(to, subject, text, html, templateData = null) {
+    if (!SENDGRID_API_KEY) {
+      console.warn('⚠️ SENDGRID_API_KEY missing. Email suppressed.');
+      return false;
     }
 
     const msg = {
       to,
-      from: 'noreply@civiccare.org', // Use your verified sender here
+      from: FROM_EMAIL,
       subject,
       text,
-      html: html || text,
+      html,
+      // If using dynamic templates later
+      templateId: templateData?.templateId,
+      dynamicTemplateData: templateData?.data
     };
 
     try {
       await sgMail.send(msg);
-      console.log(`📧 Email sent to ${to}`);
+      console.log(`✅ Email sent to ${to}: ${subject}`);
+      return true;
     } catch (error) {
-      console.error('SendGrid Error:', error.response?.body || error.message);
+      console.error('❌ SendGrid Error:', error.response?.body || error.message);
+      return false;
     }
   }
 
   /**
-   * Send Verification Email with OTP
+   * Status change alert for citizens
    */
-  static async sendVerificationEmail(to, otp) {
+  static async sendStatusUpdate(user, issue) {
+    const subject = `Update on your reported issue: ${issue.title}`;
+    const statusLabel = issue.status.replace('_', ' ').toUpperCase();
+    
     const html = `
-      <div style="font-family: sans-serif; padding: 20px; color: #333; text-align: center; border: 1px solid #eee; border-radius: 12px; max-width: 500px; margin: auto;">
-        <h2 style="color: #2563eb;">Verify Your Email</h2>
-        <p>Please use the 6-digit code below to verify your email address on Civic Care 2.0.</p>
-        <div style="font-size: 32px; font-weight: bold; letter-spacing: 8px; padding: 20px; background: #f8fafc; border-radius: 8px; margin: 20px 0; color: #1e293b; border: 1px dashed #cbd5e1;">
-          ${otp}
+      <div style="font-family: sans-serif; color: #333; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+        <h2 style="color: #2563EB;">Civic Care Update</h2>
+        <p>Hello ${user.full_name || 'Citizen'},</p>
+        <p>The status of your reported issue "<strong>${issue.title}</strong>" has been updated to:</p>
+        <div style="background: #F3F4F6; padding: 15px; border-radius: 5px; font-weight: bold; text-align: center; margin: 20px 0;">
+          ${statusLabel}
         </div>
-        <p style="font-size: 0.85em; color: #64748b;">This code will expire in 15 minutes.</p>
+        <p>Location: ${issue.address}</p>
+        <a href="${process.env.FRONTEND_URL}/issue/${issue._id}" style="display: block; background: #2563EB; color: white; padding: 12px; text-align: center; text-decoration: none; border-radius: 5px; margin-top: 20px;">View Report Details</a>
+        <p style="font-size: 12px; color: #999; margin-top: 30px;">This is an automated notification from Civic Care. Please do not reply directly to this email.</p>
       </div>
     `;
 
-    await this.sendEmail(to, 'Your Civic Care Verification Code', `Your OTP is: ${otp}`, html);
+    return this.send(user.email, subject, `Your issue status is now ${statusLabel}`, html);
   }
 
   /**
-   * Send Complaint Status Update
+   * Alert for Ward Officers on high-priority issues
    */
-  static async sendStatusUpdate(to, issueId, status, category) {
+  static async sendAdminAlert(officer, issue) {
+    const subject = `[URGENT] High Priority Issue in Your Ward`;
     const html = `
-      <div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 8px;">
-        <h3 style="color: #2563eb;">Complaint Status Update</h3>
-        <p>Your report <strong>${issueId}</strong> (${category}) has been updated.</p>
-        <div style="padding: 10px; background: #f8fafc; border-left: 4px solid #2563eb;">
-          <strong>New Status:</strong> ${status.toUpperCase()}
-        </div>
-        <p style="margin-top: 20px; font-size: 0.9em; color: #666;">Thank you for contributing to a better city!</p>
-      </div>
+      <h3>Action Required: High Priority Issue</h3>
+      <p>A new <strong>${issue.priority}</strong> priority issue has been reported in your jurisdiction.</p>
+      <p>Category: ${issue.category}</p>
+      <p>Description: ${issue.description}</p>
+      <a href="${process.env.FRONTEND_URL}/admin/issue/${issue._id}">Open Admin Dashboard</a>
     `;
-    
-    await this.sendEmail(to, `Update on Complaint ${issueId}`, `Status: ${status}`, html);
+    return this.send(officer.email, subject, `Urgent: ${issue.title}`, html);
   }
 }
 

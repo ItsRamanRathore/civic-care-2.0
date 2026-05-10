@@ -32,15 +32,3 @@ exports.whatsappWebhook = async (req, res) => {
     if (!res.headersSent) res.sendStatus(500);
   }
 };
-
-exports.twilioWebhook = async (req, res) => {
-  try {
-    const TwilioService = require('../services/twilioService');
-    await TwilioService.handleWebhook(req);
-    res.type('text/xml');
-    res.send('<Response></Response>');
-  } catch (error) {
-    console.error('Twilio Webhook Error:', error);
-    res.sendStatus(500);
-  }
-};

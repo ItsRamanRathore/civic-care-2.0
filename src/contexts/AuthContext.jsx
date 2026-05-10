@@ -66,12 +66,6 @@ export const AuthProvider = ({ children }) => {
   const signUp = async (userData) => {
     try {
       const response = await apiClient.post('/auth/signup', userData);
-      
-      // If server requires verification, DO NOT set user session yet
-      if (response.data.status === 'success' && response.data.message.includes('verify')) {
-        return { data: response.data, error: null, verificationRequired: true };
-      }
-
       const { accessToken, data } = response.data;
       localStorage.setItem('civic_care_token', accessToken);
       setNormalizedUser(data.user);

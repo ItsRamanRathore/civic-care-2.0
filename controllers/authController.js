@@ -30,47 +30,27 @@ const AlertService = require('../services/alertService');
 
 exports.register = async (req, res) => {
   try {
-    const { email, password, full_name, role, phone } = req.body;
-
-    if (!phone) {
-      return res.status(400).json({ message: 'Phone number is required' });
-    }
+    const { email, password, full_name, role } = req.body;
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ message: 'User already exists' });
     }
 
-    // Generate Verification OTP for Email
-    const emailOtp = Math.floor(100000 + Math.random() * 900000).toString();
-    const emailExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
-
     const user = await User.create({
       email,
       password,
       full_name,
-      phone,
       role: role || 'citizen',
-      email_verified: false,
-      phone_verified: false,
-      verification_meta: {
-        email_token: emailOtp, // Reusing token field for OTP
-        email_expires: emailExpires
-      }
     });
 
-    // Send Verification Email with OTP
-    const EmailService = require('../services/emailService');
-    await EmailService.sendVerificationEmail(email, emailOtp);
-
-    // Send Phone Verification (OTP) via WhatsApp
-    const TwilioService = require('../services/twilioService');
-    await TwilioService.sendOTP(phone, 'whatsapp');
+    const accessToken = generateAccessToken(user);
+    const refreshToken = await generateRefreshToken(user, req.ip);
 
     // Audit Log
     await AlertService.logAdminAction({
       user_id: user._id,
-      action: 'USER_REGISTER_PENDING_VERIFY',
+      action: 'USER_REGISTER',
       resource: 'User',
       resource_id: user._id,
       ip_address: req.ip,
@@ -79,106 +59,10 @@ exports.register = async (req, res) => {
 
     res.status(201).json({
       status: 'success',
-      message: 'Account created. Please verify your email and phone number.',
-      data: { 
-        user: {
-          id: user._id,
-          email: user.email,
-          phone: user.phone,
-          email_verified: false,
-          phone_verified: false
-        }
-      },
+      accessToken,
+      refreshToken: refreshToken.token,
+      data: { user },
     });
-  } catch (err) {
-    res.status(400).json({ status: 'fail', message: err.message });
-  }
-};
-
-exports.sendPhoneVerification = async (req, res) => {
-  try {
-    const user = await User.findById(req.user.id);
-    if (user.phone_verified) return res.status(400).json({ message: 'Phone already verified' });
-
-    const TwilioService = require('../services/twilioService');
-    await TwilioService.sendOTP(user.phone, 'whatsapp');
-
-    res.status(200).json({ status: 'success', message: 'OTP sent successfully' });
-  } catch (err) {
-    res.status(400).json({ status: 'fail', message: err.message });
-  }
-};
-
-exports.verifyPhone = async (req, res) => {
-  try {
-    const { code, userId } = req.body;
-    const targetId = req.user?.id || userId;
-
-    if (!targetId) {
-      return res.status(400).json({ message: 'User ID is required for verification' });
-    }
-
-    const user = await User.findById(targetId);
-    if (!user) return res.status(404).json({ message: 'User not found' });
-
-    const TwilioService = require('../services/twilioService');
-    const isApproved = await TwilioService.checkOTP(user.phone, code);
-
-    if (!isApproved) {
-      return res.status(400).json({ message: 'Invalid or expired OTP' });
-    }
-
-    user.phone_verified = true;
-    await user.save();
-
-    res.status(200).json({ status: 'success', message: 'Phone verified successfully' });
-  } catch (err) {
-    res.status(400).json({ status: 'fail', message: err.message });
-  }
-};
-
-exports.verifyEmail = async (req, res) => {
-  try {
-    const { token } = req.query;
-    const user = await User.findOne({
-      'verification_meta.email_token': token,
-      'verification_meta.email_expires': { $gt: Date.now() }
-    });
-
-    if (!user) {
-      return res.status(400).json({ message: 'Invalid or expired verification token' });
-    }
-
-    user.email_verified = true;
-    user.verification_meta.email_token = undefined;
-    user.verification_meta.email_expires = undefined;
-    await user.save();
-
-    res.status(200).json({ status: 'success', message: 'Email verified successfully' });
-  } catch (err) {
-    res.status(400).json({ status: 'fail', message: err.message });
-  }
-};
-
-exports.verifyEmailOTP = async (req, res) => {
-  try {
-    const { code, userId } = req.body;
-    const user = await User.findOne({
-      _id: userId,
-      'verification_meta.email_token': code,
-      'verification_meta.email_expires': { $gt: Date.now() }
-    });
-
-    if (!user) {
-      return res.status(400).json({ message: 'Invalid or expired Email OTP' });
-    }
-
-    user.email_verified = true;
-    user.verification_meta.email_token = undefined;
-    user.verification_meta.email_expires = undefined;
-    await user.save();
-
-    res.status(200).json({ status: 'success', message: 'Email verified successfully' });
   } catch (err) {
     res.status(400).json({ status: 'fail', message: err.message });
   }
@@ -195,18 +79,6 @@ exports.login = async (req, res) => {
     const user = await User.findOne({ email }).select('+password');
     if (!user || !(await user.comparePassword(password))) {
       return res.status(401).json({ message: 'Incorrect email or password' });
-    }
-
-    // Block unverified users
-    if (!user.email_verified || !user.phone_verified) {
-      return res.status(403).json({ 
-        status: 'verification_required',
-        message: 'Please verify your email and phone number to access your account.',
-        data: {
-          email_verified: user.email_verified,
-          phone_verified: user.phone_verified
-        }
-      });
     }
 
     // Check for MFA

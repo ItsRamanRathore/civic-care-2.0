@@ -11,7 +11,4 @@ router.get('/whatsapp', webhookController.whatsappVerify);
 // POST is used by Meta for actual messages
 router.post('/whatsapp', webhookController.whatsappWebhook);
 
-// Twilio Webhook (WhatsApp & SMS)
-router.post('/twilio', webhookController.twilioWebhook);
-
 module.exports = router;
