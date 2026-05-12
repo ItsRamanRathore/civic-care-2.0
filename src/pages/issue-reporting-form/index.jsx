@@ -235,7 +235,8 @@ const IssueReportingForm = () => {
         newErrors.description = t('validationDescriptionMinLength');
       }
   
-      if (!formData?.location?.address?.trim()) {
+      // Ensure location object and address exist
+      if (!formData?.location?.address || !formData.location.address.trim()) {
         newErrors.location = t('validationLocationRequired');
       }
   
@@ -259,6 +260,13 @@ const IssueReportingForm = () => {
       setErrors(newErrors);
       return Object.keys(newErrors)?.length === 0;
     };
+
+  // Prevent Enter key from submitting the form
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
+      e.preventDefault();
+    }
+  };
 
   // Handle form submission
   const handleSubmit = async (e) => {
@@ -442,7 +450,11 @@ const IssueReportingForm = () => {
               </div>
 
               {/* Form Content */}
-              <form onSubmit={handleSubmit} className="p-8 space-y-10">
+              <form 
+                onSubmit={handleSubmit} 
+                onKeyDown={handleKeyDown}
+                className="p-8 space-y-10"
+              >
                 {/* GPS Location Capture Notice */}
                 {isCapturingLocation && (
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 animate-pulse">

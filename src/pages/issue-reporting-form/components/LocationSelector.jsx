@@ -106,6 +106,7 @@ const LocationSelector = ({ location, onLocationChange, error, className = "" })
       {/* Location Actions */}
       <div className="flex flex-wrap gap-2">
         <Button
+          type="button"
           variant="outline"
           size="sm"
           onClick={getCurrentLocation}
@@ -117,6 +118,7 @@ const LocationSelector = ({ location, onLocationChange, error, className = "" })
           Use Current Location
         </Button>
         <Button
+          type="button"
           variant="outline"
           size="sm"
           onClick={toggleMap}

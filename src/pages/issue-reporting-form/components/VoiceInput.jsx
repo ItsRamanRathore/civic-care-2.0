@@ -87,6 +87,7 @@ const VoiceInput = ({ onTranscript, isActive, onToggle, className = "" }) => {
           <span className="text-sm font-medium text-text-primary">Voice Input</span>
         </div>
         <Button
+          type="button"
           variant={isListening ? "destructive" : "outline"}
           size="sm"
           onClick={toggleListening}
