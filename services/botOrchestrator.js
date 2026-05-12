@@ -90,9 +90,8 @@ class BotOrchestrator {
   }
 
   static async _analyzeIntentWithGemini(session, text) {
-    // Standard model name for current SDK versions
-    const modelName = "gemini-1.5-flash";
-    const model = genAI.getGenerativeModel({ model: modelName });
+    const modelsToTry = ["gemini-1.5-flash", "gemini-pro", "gemini-flash-latest"];
+    let lastError = null;
     
     const prompt = `You are an AI assistant for a smart city grievance portal. 
     A user just sent this message: "${text}"
@@ -105,48 +104,43 @@ class BotOrchestrator {
     Respond ONLY with a valid JSON object. Do not include any other text or markdown formatting.
     Format:
     { "category": "roads", "description": "...", "address": "...", "confidence": 0.9 }
-    If the message is not related to a civic issue (like just saying hello or off-topic), set category to null.`;
+    If the message is not related to a civic issue, set category to null.`;
 
-    try {
-      console.log(`🤖 Bot processing message with ${modelName}...`);
-      const result = await model.generateContent(prompt);
-      const fullText = result.response.text();
-      console.log('🤖 Raw AI Response:', fullText);
-      
-      // Extract JSON block using regex
-      const jsonMatch = fullText.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        console.warn('⚠️ No JSON found in AI response');
-        return "I'm sorry, I'm having a bit of trouble processing that. Could you try describing the problem in a different way?";
+    for (const modelName of modelsToTry) {
+      try {
+        console.log(`🤖 Attempting AI analysis with ${modelName}...`);
+        const model = genAI.getGenerativeModel({ model: modelName });
+        const result = await model.generateContent(prompt);
+        const fullText = result.response.text();
+        console.log(`✅ ${modelName} success! Raw response:`, fullText);
+        
+        const jsonMatch = fullText.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) continue;
+        
+        const parsed = JSON.parse(jsonMatch[0].trim());
+
+        if (!parsed.category || parsed.confidence < 0.3) {
+          return "I'm not sure if that's a civic issue I can help with. Could you describe a specific problem like a broken road, garbage, or streetlight?";
+        }
+
+        session.extracted_data.category = parsed.category;
+        session.extracted_data.description = parsed.description;
+        if (parsed.address) session.extracted_data.address = parsed.address;
+
+        session.state = 'AWAITING_LOCATION';
+        await session.save();
+
+        return `Got it! I've noted this as a ${parsed.category.toUpperCase()} issue.\n\nTo help our crew find it, please share your **Live Location pin** 📍.`;
+      } catch (e) {
+        console.error(`❌ Model ${modelName} failed:`, e.message);
+        lastError = e;
+        continue; // Try next model
       }
-      
-      const jsonStr = jsonMatch[0].trim();
-      const parsed = JSON.parse(jsonStr);
-
-      // If category is null or confidence is very low, it's not a clear complaint
-      if (!parsed.category || parsed.confidence < 0.3) {
-        console.log('ℹ️ Message not identified as a clear civic issue');
-        return "I'm not sure if that's a civic issue I can help with. Could you describe a specific problem like a broken road, garbage, or streetlight?";
-      }
-
-      session.extracted_data.category = parsed.category;
-      session.extracted_data.description = parsed.description;
-      if (parsed.address) session.extracted_data.address = parsed.address;
-
-      session.state = 'AWAITING_LOCATION';
-      await session.save();
-
-      return `Got it! I've noted this as a ${parsed.category.toUpperCase()} issue.\n\nTo help our crew find it, please share your **Live Location pin** 📍 (use the attachment clip).`;
-    } catch (e) {
-      console.error('❌ Bot AI Error:', e.message);
-      
-      // Fallback for API errors (like 404/Quota)
-      if (e.message.includes('not found') || e.message.includes('404')) {
-        return "Our AI analysis service is temporarily unavailable. Please try again in a few minutes or report via the website form.";
-      }
-      
-      return "Sorry, I had trouble understanding that. Please try describing the issue again.";
     }
+
+    // If we get here, all models failed
+    console.error('🚫 All Gemini models failed:', lastError?.message);
+    return "Our AI service is currently experiencing high demand. Please try describing your issue again in a moment, or use the website to report.";
   }
 
   static async _finalizeReport(session) {
