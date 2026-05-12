@@ -90,7 +90,8 @@ class BotOrchestrator {
   }
 
   static async _analyzeIntentWithGemini(session, text) {
-    const modelsToTry = ["gemini-1.5-flash", "gemini-pro", "gemini-flash-latest"];
+    // Exact models available for this API Key
+    const modelsToTry = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash-latest", "gemini-pro-latest"];
     let lastError = null;
     
     const prompt = `You are an AI assistant for a smart city grievance portal. 
