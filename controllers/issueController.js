@@ -144,9 +144,18 @@ exports.createIssue = async (req, res) => {
     });
 
     // Explicitly cast coordinates to Number (multipart/form-data sends strings)
-    // Using a safer check to ensure '0' is not treated as falsy/null
-    const lat = (latitude !== undefined && latitude !== null && latitude !== '') ? Number(latitude) : null;
-    const lng = (longitude !== undefined && longitude !== null && longitude !== '') ? Number(longitude) : null;
+    let lat = (latitude !== undefined && latitude !== null && latitude !== '') ? Number(latitude) : null;
+    let lng = (longitude !== undefined && longitude !== null && longitude !== '') ? Number(longitude) : null;
+
+    // Fallback: Automatic Geocoding for manual addresses
+    if ((lat === null || lng === null) && address) {
+      const GeocodingService = require('../utils/geocodingService');
+      const coords = await GeocodingService.geocode(address);
+      if (coords) {
+        lat = coords.lat;
+        lng = coords.lng;
+      }
+    }
 
     if (latitude && isNaN(lat)) {
       return res.status(400).json({ status: 'fail', message: 'Invalid latitude format' });

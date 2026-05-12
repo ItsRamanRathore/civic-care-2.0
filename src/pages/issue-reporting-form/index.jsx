@@ -82,10 +82,7 @@ const IssueReportingForm = () => {
         return;
       }
 
-      // Check if location is already captured
-      if (formData?.location?.coordinates) {
-        return;
-      }
+      if (formData?.location?.coordinates) return;
 
       console.log('🌍 Requesting GPS location...');
       setIsCapturingLocation(true);
@@ -112,27 +109,49 @@ const IssueReportingForm = () => {
           console.warn(`❌ GPS location capture failed (Attempt ${retryCount + 1}):`, error.message);
           setIsCapturingLocation(false);
           
-          // Retry logic for transient failures (like timeout)
           if (error.code === error.TIMEOUT && retryCount < MAX_RETRIES) {
             retryCount++;
             setTimeout(captureCurrentLocation, 2000);
           }
         },
-        { 
-          enableHighAccuracy: true, 
-          timeout: 20000, // Increased timeout to 20s
-          maximumAge: 10000 // Reduced age to ensure fresh location
-        }
+        { enableHighAccuracy: true, timeout: 20000, maximumAge: 10000 }
       );
     };
 
-    // Capture location after a short delay to ensure form is fully interactive
-    const timer = setTimeout(captureCurrentLocation, 2000);
+    // Smart Auto-Capture: Check permission state first
+    const initLocationCapture = async () => {
+      try {
+        if (navigator.permissions && navigator.permissions.query) {
+          const result = await navigator.permissions.query({ name: 'geolocation' });
+          console.log('📡 Geolocation permission state:', result.state);
+          
+          if (result.state === 'granted') {
+            // Permission already exists, we can capture automatically
+            captureCurrentLocation();
+          }
+          
+          // Listen for permission changes
+          result.onchange = () => {
+            if (result.state === 'granted') captureCurrentLocation();
+          };
+        } else {
+          // Fallback for browsers that don't support Permissions API
+          captureCurrentLocation();
+        }
+      } catch (err) {
+        console.warn('Permissions API check failed, falling back to standard capture:', err);
+        captureCurrentLocation();
+      }
+    };
+
+    window.addEventListener('triggerLocationCapture', captureCurrentLocation);
+    const timer = setTimeout(initLocationCapture, 1500);
     
     return () => {
       clearTimeout(timer);
+      window.removeEventListener('triggerLocationCapture', captureCurrentLocation);
     };
-  }, []); // Run on mount
+  }, []);
 
   // Real-time AI Analysis
   useEffect(() => {
@@ -426,7 +445,7 @@ const IssueReportingForm = () => {
               <form onSubmit={handleSubmit} className="p-8 space-y-10">
                 {/* GPS Location Capture Notice */}
                 {isCapturingLocation && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 animate-pulse">
                     <div className="flex items-start space-x-3">
                       <div className="animate-spin">
                         <Icon name="Crosshair" size={20} className="text-blue-500 mt-0.5" />
@@ -437,6 +456,41 @@ const IssueReportingForm = () => {
                           {t('detectingCurrentLocation')}
                         </p>
                       </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Explicit Permission Request if not captured and not capturing */}
+                {!formData?.location?.coordinates && !isCapturingLocation && !locationCaptured && (
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                      <div className="flex items-start space-x-3">
+                        <div className="p-2 bg-amber-100 rounded-full">
+                          <Icon name="MapPin" size={20} className="text-amber-600" />
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-bold text-amber-900">Enable Live Location</h3>
+                          <p className="text-xs text-amber-700 mt-0.5">
+                            Grant location permission to automatically pin this issue on the map for faster response.
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="primary"
+                        size="sm"
+                        onClick={() => {
+                          console.log('👆 User triggered location request');
+                          // Re-trigger the capture logic
+                          const event = new CustomEvent('triggerLocationCapture');
+                          window.dispatchEvent(event);
+                        }}
+                        className="whitespace-nowrap bg-amber-600 hover:bg-amber-700 border-none shadow-sm"
+                        iconName="Crosshair"
+                        iconPosition="left"
+                      >
+                        Allow GPS Access
+                      </Button>
                     </div>
                   </div>
                 )}
