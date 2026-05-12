@@ -341,7 +341,14 @@ exports.getAnalytics = async (req, res) => {
     if (startDate || endDate) {
       filter.createdAt = {};
       if (startDate) filter.createdAt.$gte = new Date(startDate);
-      if (endDate) filter.createdAt.$lte = new Date(endDate);
+      if (endDate) {
+        const end = new Date(endDate);
+        // If it's just a date without time, set to end of day
+        if (endDate.length <= 10) {
+          end.setHours(23, 59, 59, 999);
+        }
+        filter.createdAt.$lte = end;
+      }
     }
     if (category) filter.category = category;
 
