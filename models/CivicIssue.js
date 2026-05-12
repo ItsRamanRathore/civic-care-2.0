@@ -160,9 +160,22 @@ civicIssueSchema.set('toObject', {
 
 // Virtual for coordinates object to match frontend expectation
 civicIssueSchema.virtual('coordinates').get(function() {
-  if (this.latitude !== null && this.longitude !== null) {
+  if (this.latitude !== null && this.latitude !== undefined && 
+      this.longitude !== null && this.longitude !== undefined) {
     return { lat: this.latitude, lng: this.longitude };
   }
+  
+  // Fallback to location_geojson if direct fields are missing
+  if (this.location_geojson && 
+      this.location_geojson.coordinates && 
+      this.location_geojson.coordinates.length === 2 &&
+      (this.location_geojson.coordinates[0] !== 0 || this.location_geojson.coordinates[1] !== 0)) {
+    return { 
+      lat: this.location_geojson.coordinates[1], 
+      lng: this.location_geojson.coordinates[0] 
+    };
+  }
+  
   return null;
 });
 

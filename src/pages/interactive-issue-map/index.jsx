@@ -118,7 +118,10 @@ const InteractiveIssueMap = () => {
   }) || [];
 
   // Use real issues with valid coordinates, otherwise fall back to enhanced mock data
-  const displayIssues = issuesWithValidCoordinates.length > 0 ? issuesWithValidCoordinates : (realIssues?.length > 0 ? [] : enhancedMockIssues);
+  // Use real issues with valid coordinates, or mock data if no real issues exist at all
+  const displayIssues = issuesWithValidCoordinates.length > 0 
+    ? issuesWithValidCoordinates 
+    : (realIssues?.length > 0 ? issuesWithValidCoordinates : enhancedMockIssues);
   
   console.log('🗺️ Map Data Debug:', {
     realIssuesCount: realIssues?.length || 0,

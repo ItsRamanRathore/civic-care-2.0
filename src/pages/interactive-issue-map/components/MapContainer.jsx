@@ -96,7 +96,11 @@ const MapContainer = ({
 
   useEffect(() => { if (searchLocation) { setMapCenter(searchLocation.coordinates); setMapZoom(15); } }, [searchLocation]);
 
-  const validIssues = (issues || []).filter(i => i.coordinates?.lat && i.coordinates?.lng);
+  const validIssues = (issues || []).filter(i => 
+    i.coordinates && 
+    i.coordinates.lat !== undefined && i.coordinates.lat !== null &&
+    i.coordinates.lng !== undefined && i.coordinates.lng !== null
+  );
   const handleMarkerClick = (issue) => onIssueSelect?.(issue);
   const handleRecenter = () => {
     if (userLocation) { setMapCenter(userLocation); setMapZoom(15); }

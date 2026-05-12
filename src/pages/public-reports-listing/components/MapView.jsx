@@ -47,6 +47,8 @@ const MapView = ({ issues, onIssueSelect, selectedIssue }) => {
     // Filter issues that have valid coordinates
     const validIssues = issues.filter(issue => 
       issue?.coordinates && 
+      issue.coordinates.lat !== null && issue.coordinates.lat !== undefined &&
+      issue.coordinates.lng !== null && issue.coordinates.lng !== undefined &&
       typeof issue.coordinates.lat === 'number' && 
       typeof issue.coordinates.lng === 'number' &&
       !isNaN(issue.coordinates.lat) && 

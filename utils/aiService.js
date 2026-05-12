@@ -7,6 +7,60 @@ const PRIORITIES = ['low', 'medium', 'high', 'critical'];
  * @param {string} description - The user provided description of the issue.
  * @returns {Promise<{category: string, priority: string, confidence: number}>}
  */
+/**
+ * Geocode an address using Google Gemini AI as a fallback for traditional geocoders.
+ * @param {string} address - The address to geocode.
+ * @returns {Promise<{lat: number, lng: number}|null>}
+ */
+exports.geocodeAddress = async (address) => {
+  if (!process.env.GEMINI_API_KEY) return null;
+
+  try {
+    const apiKey = process.env.GEMINI_API_KEY;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+    
+    const prompt = `
+      As a geospatial expert, find the approximate latitude and longitude for this address:
+      "${address}"
+      
+      If the address is in a city like Bhopal, India, return the coordinates for that specific area.
+      Return ONLY a JSON object with this structure:
+      {
+        "lat": latitude_number,
+        "lng": longitude_number,
+        "is_accurate": true_or_false
+      }
+    `;
+
+    const payload = {
+      contents: [{ parts: [{ text: prompt }] }]
+    };
+
+    const response = await axios.post(url, payload, {
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+    const candidates = response.data?.candidates;
+    if (!candidates || candidates.length === 0) return null;
+
+    const text = candidates[0].content.parts[0].text;
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return null;
+    
+    const result = JSON.parse(jsonMatch[0]);
+    if (result.lat && result.lng) {
+      return {
+        lat: parseFloat(result.lat),
+        lng: parseFloat(result.lng)
+      };
+    }
+    return null;
+  } catch (error) {
+    console.error("❌ AI Geocoding Error:", error.message);
+    return null;
+  }
+};
+
 exports.analyzeIssue = async (description) => {
   if (!process.env.GEMINI_API_KEY) {
     console.warn("⚠️ GEMINI_API_KEY is missing. Falling back to default categorization.");

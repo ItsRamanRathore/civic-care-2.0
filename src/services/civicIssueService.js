@@ -66,7 +66,9 @@ export const civicIssueService = {
       created_at: createdAt,
       createdAt, // Shared property
       reportedAt: createdAt,
-      coordinates: issue.coordinates || (issue.latitude ? { lat: issue.latitude, lng: issue.longitude } : null)
+      coordinates: issue.coordinates || 
+                   (issue.latitude !== undefined && issue.latitude !== null ? { lat: issue.latitude, lng: issue.longitude } : null) ||
+                   (issue.location_geojson?.coordinates?.length === 2 ? { lat: issue.location_geojson.coordinates[1], lng: issue.location_geojson.coordinates[0] } : null)
     };
   },
 
@@ -122,7 +124,8 @@ export const civicIssueService = {
         },
       });
 
-      return { data: response.data.data, error: null, success: true };
+      const normalizedIssue = civicIssueService._normalizeIssue(response.data.data);
+      return { data: normalizedIssue, error: null, success: true };
     } catch (error) {
       console.error('Issue creation failed:', error);
       return { 
