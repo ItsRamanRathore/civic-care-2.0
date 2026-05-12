@@ -99,16 +99,26 @@ class BotOrchestrator {
     - description (a clean summary of the issue)
     - address (if mentioned in text)
     
-    Respond STRICTLY in JSON format with fields:
+    Respond ONLY with a valid JSON object. Do not include any other text or markdown formatting outside the JSON.
+    Format:
     { "category": "roads", "description": "...", "address": "...", "confidence": 0.9 }
     If the message is not related to a civic issue, set category to null.`;
 
     try {
       const result = await model.generateContent(prompt);
-      const jsonStr = result.response.text().replace(/```json/gi, '').replace(/```/g, '').trim();
+      const fullText = result.response.text();
+      console.log('🤖 Bot AI Raw Response:', fullText);
+      
+      // Robust JSON extraction using regex
+      const jsonMatch = fullText.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error('No JSON block found in AI response');
+      }
+      
+      const jsonStr = jsonMatch[0].trim();
       const parsed = JSON.parse(jsonStr);
 
-      if (!parsed.category || parsed.confidence < 0.5) {
+      if (!parsed.category || parsed.confidence < 0.4) {
         return "I'm not sure I understood the civic issue there. Could you describe what the problem is? (e.g., 'There is a broken streetlight on main st.')";
       }
 
@@ -119,9 +129,10 @@ class BotOrchestrator {
       session.state = 'AWAITING_LOCATION';
       await session.save();
 
-      return `Got it! I am classifying this as a ${parsed.category.toUpperCase()} issue.\n\nTo assign a crew, I need the exact GPS coordinates. Please tap the attachment clip and share your **Live/Current Location pin** 📍.`;
+      return `Got it! I am classifying this as a ${parsed.category.toUpperCase()} issue.\n\nTo assign a crew, I need the exact GPS coordinates. Please share your **Live/Current Location pin** 📍.`;
     } catch (e) {
-      console.error('Gemini NLP Error:', e);
+      console.error('❌ Gemini NLP Error:', e.message);
+      if (e.stack) console.error(e.stack);
       return "Sorry, I had trouble understanding that. Please try describing the issue again.";
     }
   }
