@@ -15,9 +15,14 @@ exports.analyzeIssue = async (description) => {
 
   try {
     const apiKey = process.env.GEMINI_API_KEY;
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${apiKey}`;
-    
-    const prompt = `
+    const modelsToTry = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-pro-latest", "gemini-flash-latest"];
+    let lastError = null;
+
+    for (const model of modelsToTry) {
+      try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+        
+        const prompt = `
       As an expert civic issue management AI, analyze the following citizen complaint:
       "${description}"
 
@@ -66,8 +71,16 @@ exports.analyzeIssue = async (description) => {
       reasoning: analysis.reasoning,
       confidence: 1
     };
+      } catch (innerError) {
+        console.error(`❌ Model ${model} failed for categorization:`, innerError.message);
+        lastError = innerError;
+        continue;
+      }
+    }
+    
+    throw new Error(`All Gemini models failed: ${lastError?.message}`);
   } catch (error) {
-    console.error("❌ AI Analysis Error:", error.response ? JSON.stringify(error.response.data) : error.message);
+    console.error("❌ AI Analysis Critical Error:", error.message);
     return { category: 'other', priority: 'medium', confidence: 0 };
   }
 };
