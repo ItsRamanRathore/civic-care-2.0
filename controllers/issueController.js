@@ -104,7 +104,7 @@ const aiService = require('../utils/aiService');
 
 exports.createIssue = async (req, res) => {
   try {
-    const { title, description, category, priority, latitude, longitude } = req.body;
+    const { title, description, category, priority, latitude, longitude, address } = req.body;
     
     // 1. AI Analysis fallback
     const aiResult = await aiService.analyzeIssue(description);
