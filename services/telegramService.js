@@ -40,8 +40,11 @@ class TelegramService {
         }
       }
 
+      // Extract User Name
+      const userName = update.message.from.first_name + (update.message.from.last_name ? ' ' + update.message.from.last_name : '');
+
       // Route through Orchestrator
-      const replyText = await BotOrchestrator.processMessage('telegram', chatId, text, location, mediaUrl);
+      const replyText = await BotOrchestrator.processMessage('telegram', chatId, text, location, mediaUrl, userName);
       
       // Send Reply back
       if (replyText) {

@@ -12,7 +12,7 @@ class BotOrchestrator {
   /**
    * Process incoming text messages
    */
-  static async processMessage(platform, chatId, text, location = null, mediaUrl = null) {
+  static async processMessage(platform, chatId, text, location = null, mediaUrl = null, userName = null) {
     if (!genAI) {
       console.error('Gemini API Key missing. Omni-channel bot disabled.');
       return "Sorry, our AI system is currently down. Please try again later.";
@@ -25,8 +25,11 @@ class BotOrchestrator {
       session = new BotSession({
         chat_id: uniqueId,
         platform,
-        state: 'IDLE'
+        state: 'IDLE',
+        extracted_data: { user_name: userName || `Citizen (${platform})` }
       });
+    } else if (userName && !session.extracted_data.user_name) {
+      session.extracted_data.user_name = userName;
     }
 
     // Handle commands
@@ -146,6 +149,7 @@ class BotOrchestrator {
 
   static async _finalizeReport(session) {
     const data = session.extracted_data;
+    const reporterName = data.user_name || `Anonymous ${session.platform} User`;
     
     try {
       // 1. Duplicate Detection
@@ -156,16 +160,32 @@ class BotOrchestrator {
         description: data.description
       });
 
-      // 2. Priority Scoring
-      const clusterSize = potentialDuplicate ? 5 : 1;
+      // If we found a duplicate, we DON'T create a new issue.
+      // Instead, we "upvote" the existing one to increase its priority.
+      if (potentialDuplicate) {
+        potentialDuplicate.priority_score += 10; // Boost score
+        // Only mark as critical if it has many reports
+        if (potentialDuplicate.priority_score > 100) {
+          potentialDuplicate.priority = 'critical';
+        }
+        await potentialDuplicate.save();
+
+        // Reset Session
+        session.state = 'IDLE';
+        session.extracted_data = {};
+        await session.save();
+
+        return `📍 **Similar Issue Found!**\n\nWe already have an active report for this issue nearby. Instead of creating a duplicate, we have **linked your report** to the existing one. This has boosted its priority for our crews!\n\nExisting Tracking ID: #${potentialDuplicate._id.toString().slice(-6).toUpperCase()}`;
+      }
+
+      // 2. Priority Scoring for new issue
       const scoringResult = PriorityScoringService.calculate({
         category: data.category,
         upvotes: 0,
-        reporterReputation: 50, // Default bot reporter reputation
-        clusterSize
+        reporterReputation: 50,
+        clusterSize: 1
       });
 
-      // Ensure coordinates exist so it appears on the interactive map
       const finalLat = data.latitude || (28.6139 + (Math.random() - 0.5) * 0.05);
       const finalLng = data.longitude || (77.2090 + (Math.random() - 0.5) * 0.05);
 
@@ -181,18 +201,17 @@ class BotOrchestrator {
         address: data.address || 'Reported via Bot',
         status: 'submitted',
         is_ai_categorized: true,
-        duplicate_of: potentialDuplicate ? potentialDuplicate._id : null,
-        reporter_name: `Anonymous ${session.platform} User`
+        reporter_name: reporterName
       });
 
-      // 4. Save Image to separate IssueImage collection
-      if (session.extracted_data.image_url) {
+      // 4. Save Image
+      if (data.image_url) {
         const IssueImage = require('../models/IssueImage');
         await IssueImage.create({
           issue_id: newIssue._id,
-          image_path: session.extracted_data.image_url,
-          image_url: session.extracted_data.image_url,
-          caption: 'Uploaded via Bot'
+          image_path: data.image_url,
+          image_url: data.image_url,
+          caption: `Uploaded by ${reporterName} via Bot`
         });
       }
 
@@ -201,17 +220,11 @@ class BotOrchestrator {
       session.extracted_data = {};
       await session.save();
 
-      let reply = `✅ **Issue Successfully Reported!**\n\nTracking ID: #${newIssue._id.toString().slice(-6).toUpperCase()}\nPriority: ${scoringResult.tier.toUpperCase()}\n\nOur crew has been notified. Thank you for keeping our city clean!`;
-      
-      if (potentialDuplicate) {
-        reply += `\n\n*(Note: We detected a similar report nearby. We have merged your report to escalate its priority!)*`;
-      }
-
-      return reply;
+      return `✅ **Issue Successfully Reported!**\n\nTracking ID: #${newIssue._id.toString().slice(-6).toUpperCase()}\nPriority: ${scoringResult.tier.toUpperCase()}\n\nThank you, ${reporterName}! Our crew has been notified.`;
 
     } catch (err) {
       console.error("Finalize Report Error:", err);
-      return "Something went wrong while saving your report to our database. Please try again later.";
+      return "Something went wrong while saving your report. Please try again later.";
     }
   }
 }

@@ -76,8 +76,12 @@ class WhatsappService {
           }
         }
 
+        // Extract User Name
+        const contact = body.entry[0].changes[0].value.contacts?.[0];
+        const userName = contact?.profile?.name;
+
         // Route through Orchestrator
-        const replyText = await BotOrchestrator.processMessage('whatsapp', from, text, location, mediaUrl);
+        const replyText = await BotOrchestrator.processMessage('whatsapp', from, text, location, mediaUrl, userName);
 
         // Send Reply Back via Meta API
         if (replyText) {
