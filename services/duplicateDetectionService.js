@@ -15,19 +15,21 @@ class DuplicateDetectionService {
     // 1. Basic Spatial Check (Last 72 hours, 150 meters)
     const timeWindow = new Date(Date.now() - 72 * 60 * 60 * 1000);
     
-    const spatialDuplicate = await CivicIssue.findOne({
-      category: category,
-      status: { $ne: 'resolved' }, // Only check active issues
-      createdAt: { $gte: timeWindow },
-      location_geojson: {
-        $near: {
-          $geometry: { type: "Point", coordinates: [longitude, latitude] },
-          $maxDistance: 150 // 150 meters radius
+    if (latitude !== undefined && latitude !== null && longitude !== undefined && longitude !== null) {
+      const spatialDuplicate = await CivicIssue.findOne({
+        category: category,
+        status: { $ne: 'resolved' }, // Only check active issues
+        createdAt: { $gte: timeWindow },
+        location_geojson: {
+          $near: {
+            $geometry: { type: "Point", coordinates: [longitude, latitude] },
+            $maxDistance: 150 // 150 meters radius
+          }
         }
-      }
-    });
+      });
 
-    if (spatialDuplicate) return spatialDuplicate;
+      if (spatialDuplicate) return spatialDuplicate;
+    }
 
     // 2. Semantic/Keyword check (fallback if GPS is slightly off)
     // We check for very similar titles/descriptions in the same category

@@ -73,6 +73,9 @@ const IssueReportingForm = () => {
 
   // Auto-capture GPS location when form loads
   useEffect(() => {
+    let retryCount = 0;
+    const MAX_RETRIES = 2;
+
     const captureCurrentLocation = () => {
       if (!navigator.geolocation) {
         console.warn('Geolocation is not supported by this browser');
@@ -97,34 +100,39 @@ const IssueReportingForm = () => {
             location: {
               ...prev.location,
               coordinates: { lat: latitude, lng: longitude },
-              // Smart auto-fill: if address is empty, provide a descriptive placeholder
               address: prev.location.address || `GPS Captured: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`
             }
           }));
           
           setIsCapturingLocation(false);
           setLocationCaptured(true);
-          
-          // Hide the success message after 5 seconds
           setTimeout(() => setLocationCaptured(false), 5000);
         },
         (error) => {
-          console.warn('❌ GPS location capture failed:', error.message);
+          console.warn(`❌ GPS location capture failed (Attempt ${retryCount + 1}):`, error.message);
           setIsCapturingLocation(false);
+          
+          // Retry logic for transient failures (like timeout)
+          if (error.code === error.TIMEOUT && retryCount < MAX_RETRIES) {
+            retryCount++;
+            setTimeout(captureCurrentLocation, 2000);
+          }
         },
         { 
           enableHighAccuracy: true, 
-          timeout: 15000, // Increased timeout to 15s
-          maximumAge: 300000 
+          timeout: 20000, // Increased timeout to 20s
+          maximumAge: 10000 // Reduced age to ensure fresh location
         }
       );
     };
 
-    // Capture location after a short delay to ensure form is loaded
-    const timer = setTimeout(captureCurrentLocation, 1000);
+    // Capture location after a short delay to ensure form is fully interactive
+    const timer = setTimeout(captureCurrentLocation, 2000);
     
-    return () => clearTimeout(timer);
-  }, []); // Only run once when component mounts
+    return () => {
+      clearTimeout(timer);
+    };
+  }, []); // Run on mount
 
   // Real-time AI Analysis
   useEffect(() => {
