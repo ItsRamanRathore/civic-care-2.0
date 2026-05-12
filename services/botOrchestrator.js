@@ -90,7 +90,10 @@ class BotOrchestrator {
   }
 
   static async _analyzeIntentWithGemini(session, text) {
-    const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+    // Standard model name for current SDK versions
+    const modelName = "gemini-1.5-flash";
+    const model = genAI.getGenerativeModel({ model: modelName });
+    
     const prompt = `You are an AI assistant for a smart city grievance portal. 
     A user just sent this message: "${text}"
     
@@ -99,27 +102,31 @@ class BotOrchestrator {
     - description (a clean summary of the issue)
     - address (if mentioned in text)
     
-    Respond ONLY with a valid JSON object. Do not include any other text or markdown formatting outside the JSON.
+    Respond ONLY with a valid JSON object. Do not include any other text or markdown formatting.
     Format:
     { "category": "roads", "description": "...", "address": "...", "confidence": 0.9 }
-    If the message is not related to a civic issue, set category to null.`;
+    If the message is not related to a civic issue (like just saying hello or off-topic), set category to null.`;
 
     try {
+      console.log(`🤖 Bot processing message with ${modelName}...`);
       const result = await model.generateContent(prompt);
       const fullText = result.response.text();
-      console.log('🤖 Bot AI Raw Response:', fullText);
+      console.log('🤖 Raw AI Response:', fullText);
       
-      // Robust JSON extraction using regex
+      // Extract JSON block using regex
       const jsonMatch = fullText.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
-        throw new Error('No JSON block found in AI response');
+        console.warn('⚠️ No JSON found in AI response');
+        return "I'm sorry, I'm having a bit of trouble processing that. Could you try describing the problem in a different way?";
       }
       
       const jsonStr = jsonMatch[0].trim();
       const parsed = JSON.parse(jsonStr);
 
-      if (!parsed.category || parsed.confidence < 0.4) {
-        return "I'm not sure I understood the civic issue there. Could you describe what the problem is? (e.g., 'There is a broken streetlight on main st.')";
+      // If category is null or confidence is very low, it's not a clear complaint
+      if (!parsed.category || parsed.confidence < 0.3) {
+        console.log('ℹ️ Message not identified as a clear civic issue');
+        return "I'm not sure if that's a civic issue I can help with. Could you describe a specific problem like a broken road, garbage, or streetlight?";
       }
 
       session.extracted_data.category = parsed.category;
@@ -129,10 +136,15 @@ class BotOrchestrator {
       session.state = 'AWAITING_LOCATION';
       await session.save();
 
-      return `Got it! I am classifying this as a ${parsed.category.toUpperCase()} issue.\n\nTo assign a crew, I need the exact GPS coordinates. Please share your **Live/Current Location pin** 📍.`;
+      return `Got it! I've noted this as a ${parsed.category.toUpperCase()} issue.\n\nTo help our crew find it, please share your **Live Location pin** 📍 (use the attachment clip).`;
     } catch (e) {
-      console.error('❌ Gemini NLP Error:', e.message);
-      if (e.stack) console.error(e.stack);
+      console.error('❌ Bot AI Error:', e.message);
+      
+      // Fallback for API errors (like 404/Quota)
+      if (e.message.includes('not found') || e.message.includes('404')) {
+        return "Our AI analysis service is temporarily unavailable. Please try again in a few minutes or report via the website form.";
+      }
+      
       return "Sorry, I had trouble understanding that. Please try describing the issue again.";
     }
   }
