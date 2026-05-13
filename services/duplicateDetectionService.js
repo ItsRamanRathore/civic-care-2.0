@@ -41,9 +41,8 @@ class DuplicateDetectionService {
           status: { $ne: 'resolved' },
           createdAt: { $gte: timeWindow },
           location_geojson: {
-            $near: {
-              $geometry: { type: "Point", coordinates: [longitude, latitude] },
-              $maxDistance: 150 // 300m radius for semantic match (slightly larger than GPS radius)
+            $geoWithin: {
+              $centerSphere: [[longitude, latitude], 300 / 6378100] // 300m radius in radians
             }
           },
           $text: { $search: keywords.join(' ') } 
