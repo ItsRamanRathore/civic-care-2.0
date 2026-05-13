@@ -93,8 +93,13 @@ class BotOrchestrator {
   }
 
   static async _analyzeIntentWithGemini(session, text) {
-    // Exact models available for this API Key
-    const modelsToTry = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash-latest", "gemini-pro-latest"];
+    // Verified models for 2026 environment
+    const modelsToTry = [
+      "gemini-2.5-flash", 
+      "gemini-2.5-flash-lite", 
+      "gemini-2.0-flash", 
+      "gemini-flash-latest"
+    ];
     let lastError = null;
     
     const prompt = `You are an AI assistant for a smart city grievance portal. 
@@ -115,11 +120,21 @@ class BotOrchestrator {
         console.log(`🤖 Attempting AI analysis with ${modelName}...`);
         const model = genAI.getGenerativeModel({ model: modelName });
         const result = await model.generateContent(prompt);
+        
+        // Handle potential safety block without throwing immediately
+        if (!result.response) {
+          console.error(`❌ ${modelName} returned no response (likely safety block)`);
+          continue;
+        }
+
         const fullText = result.response.text();
-        console.log(`✅ ${modelName} success! Raw response:`, fullText);
+        console.log(`✅ ${modelName} success!`);
         
         const jsonMatch = fullText.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) continue;
+        if (!jsonMatch) {
+          console.warn(`⚠️ ${modelName} returned no JSON snippet:`, fullText);
+          continue;
+        }
         
         const parsed = JSON.parse(jsonMatch[0].trim());
 
@@ -136,14 +151,18 @@ class BotOrchestrator {
 
         return `Got it! I've noted this as a ${parsed.category.toUpperCase()} issue.\n\nTo help our crew find it, please share your **Live Location pin** 📍.`;
       } catch (e) {
+        // Log detailed error for developers, but don't show to user yet
         console.error(`❌ Model ${modelName} failed:`, e.message);
+        if (e.message.includes('429')) {
+          console.error(`  -> Quota limit reached for ${modelName}`);
+        }
         lastError = e;
-        continue; // Try next model
+        continue; // Try next fallback model
       }
     }
 
     // If we get here, all models failed
-    console.error('🚫 All Gemini models failed:', lastError?.message);
+    console.error('🚫 All Gemini models failed. Last captured error:', lastError?.message);
     return "Our AI service is currently experiencing high demand. Please try describing your issue again in a moment, or use the website to report.";
   }
 
