@@ -194,7 +194,7 @@ class BotOrchestrator {
         session.extracted_data = {};
         await session.save();
 
-        return `📍 **Similar Issue Found!**\n\nWe already have an active report for this issue nearby. Instead of creating a duplicate, we have **linked your report** to the existing one. This has boosted its priority for our crews!\n\nExisting Tracking ID: #${potentialDuplicate._id.toString().slice(-6).toUpperCase()}`;
+        return `📍 **Similar Issue Found!**\n\nWe already have an active report for this issue nearby. Instead of creating a duplicate, we have **linked your report** to the existing one. This has boosted its priority for our crews!\n\nExisting Tracking ID: #${potentialDuplicate.custom_id || potentialDuplicate._id.toString().slice(-6).toUpperCase()}`;
       }
 
       // 2. Priority Scoring for new issue
@@ -239,7 +239,7 @@ class BotOrchestrator {
       session.extracted_data = {};
       await session.save();
 
-      return `✅ **Issue Successfully Reported!**\n\nTracking ID: #${newIssue._id.toString().slice(-6).toUpperCase()}\nPriority: ${scoringResult.tier.toUpperCase()}\n\nThank you, ${reporterName}! Our crew has been notified.`;
+      return `✅ **Issue Successfully Reported!**\n\nTracking ID: #${newIssue.custom_id || newIssue._id.toString().slice(-6).toUpperCase()}\nPriority: ${scoringResult.tier.toUpperCase()}\n\nThank you, ${reporterName}! Our crew has been notified.`;
 
     } catch (err) {
       console.error("Finalize Report Error:", err);

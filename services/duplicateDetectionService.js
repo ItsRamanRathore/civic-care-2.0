@@ -32,15 +32,21 @@ class DuplicateDetectionService {
     }
 
     // 2. Semantic/Keyword check (fallback if GPS is slightly off)
-    // We check for very similar titles/descriptions in the same category
-    if (description) {
+    // We check for very similar titles/descriptions in the same category within the same area (300m)
+    if (description && latitude && longitude) {
       const keywords = description.toLowerCase().split(/\W+/).filter(w => w.length > 4);
       if (keywords.length > 0) {
         const textDuplicate = await CivicIssue.findOne({
           category: category,
           status: { $ne: 'resolved' },
           createdAt: { $gte: timeWindow },
-          $text: { $search: keywords.join(' ') } // Uses MongoDB text index if available
+          location_geojson: {
+            $near: {
+              $geometry: { type: "Point", coordinates: [longitude, latitude] },
+              $maxDistance: 150 // 300m radius for semantic match (slightly larger than GPS radius)
+            }
+          },
+          $text: { $search: keywords.join(' ') } 
         }).sort({ score: { $meta: "textScore" } });
         
         return textDuplicate;
